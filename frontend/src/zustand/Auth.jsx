@@ -10,10 +10,13 @@ export const useAuth = create((set) => ({
   loginUser: async (Username, Password) => {
     set(() => ({ loginLoading: true }));
     try {
-      const res = await axios.post("/server" + "/users/login", {
-        Username,
-        Password,
-      });
+      const res = await axios.post(
+        import.meta.env.VITE_AXIOS_URL + "/users/login",
+        {
+          Username,
+          Password,
+        }
+      );
       set((state) => ({ user: (state.data = res.data) }));
     } catch (error) {
       console.log(error);
@@ -25,7 +28,9 @@ export const useAuth = create((set) => ({
   refreshToken: async () => {
     set(() => ({ isLoading: true }));
     try {
-      const res = await axios.get("/server" + "/users/refresh");
+      const res = await axios.get(
+        import.meta.env.VITE_AXIOS_URL + "/users/refresh"
+      );
 
       set((state) => ({ user: (state.data = res.data) }));
       return res.data;
@@ -37,7 +42,7 @@ export const useAuth = create((set) => ({
     }
   },
   logoutUser: async () => {
-    await axios.get("/server" + "/users/logout");
+    await axios.get(import.meta.env.VITE_AXIOS_URL + "/users/logout");
     localStorage.removeItem("route");
     set(() => ({
       user: null,

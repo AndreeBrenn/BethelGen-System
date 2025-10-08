@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import PrivateRoute from "./routes/PrivateRoute";
 import { useAuth } from "./zustand/Auth";
 import { useEffect } from "react";
+import MissingPage from "./pages/MissingPage";
 
 function App() {
   const { refreshToken } = useAuth();
@@ -23,6 +24,7 @@ function App() {
       <Route element={<PrivateRoute />}>
         <Route path="/" element={<Dashboard />} />
       </Route>
+      <Route path="*" element={<MissingPage />} />
     </Routes>
   );
 }

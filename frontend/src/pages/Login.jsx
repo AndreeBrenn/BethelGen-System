@@ -119,8 +119,9 @@ const Login = () => {
             </div>
 
             <button
+              disabled={loginLoading}
               type="submit"
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition duration-200"
+              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition duration-200 disabled:cursor-not-allowed disabled:bg-gray-500 disabled:text-white"
             >
               Sign In
             </button>

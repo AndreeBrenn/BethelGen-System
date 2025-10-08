@@ -1,7 +1,9 @@
 import React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FaShieldAlt, FaUser, FaEnvelope, FaLock, FaKey } from "react-icons/fa";
 import axios from "axios";
+import { handleApiError } from "../utils/HandleError";
+import { useNavigate } from "react-router-dom";
 
 const SuperUser = () => {
   const [inputFields, setInputFields] = useState({
@@ -15,6 +17,37 @@ const SuperUser = () => {
     ConfirmPassword: "",
   });
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+
+    const detect_superUser = async () => {
+      try {
+        const res = await axios.get(
+          import.meta.env.VITE_AXIOS_URL + "/users/detect-superuser"
+        );
+
+        if (res.data.count == 1) {
+          navigate("/login");
+        }
+
+        console.log(res.data.count);
+
+        return;
+      } catch (error) {
+        handleApiError(error);
+      }
+    };
+
+    detect_superUser();
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, []);
 
   const create_superuser = async (e) => {
     e.preventDefault();
@@ -25,7 +58,7 @@ const SuperUser = () => {
       }
 
       const res = await axios.post(
-        "/server" + "/users/create-super-user",
+        import.meta.env.VITE_AXIOS_URL + "/users/create-super-user",
         inputFields
       );
 

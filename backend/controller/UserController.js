@@ -11,7 +11,8 @@ const jwt = require("jsonwebtoken");
 // @route   POST /users/create-super-user
 // @access  Public
 
-const createSuperUser = async (req, res) => {
+//#region  SUPERUSER FUNCTION
+const createSuperUser = async (req, res, next) => {
   const userData = req.body;
   try {
     const userExist = await Users.findOne({
@@ -38,10 +39,30 @@ const createSuperUser = async (req, res) => {
     return res.status(200).json(result);
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Something went wrong!" });
+    next(error);
   }
 };
 
+// @desc    Detect Superuser
+// @route   GET /users/detect-superuser
+// @access  Public
+
+const detect_Superuser = async (req, res, next) => {
+  try {
+    const userCount = await Users.count();
+    if (userCount !== 0) {
+      return res.status(200).json({ count: 1 });
+    }
+
+    return res.status(200).json({ count: 0 });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//#endregion
+
+//#region USERS FUNCTION
 // @desc    Create User
 // @route   POST /users/create-users
 // @access  Private
@@ -68,7 +89,7 @@ const createUser = async (req, res) => {
     return res.status(200).json(result);
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Something went wrong!" });
+    next(error);
   }
 };
 
@@ -76,7 +97,7 @@ const createUser = async (req, res) => {
 // @route   POST /users/login
 // @access  Public
 
-const login = async (req, res) => {
+const login = async (req, res, next) => {
   const userData = req.body;
 
   try {
@@ -104,6 +125,7 @@ const login = async (req, res) => {
       FullName: user.FullName,
       Role: user.Role,
       Department: user.Department,
+      Email: user.Email,
     });
 
     res.cookie("r_token", refreshToken, {
@@ -116,7 +138,7 @@ const login = async (req, res) => {
     return res.status(200).json(accessToken);
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Something went wrong!" });
+    next(error);
   }
 };
 
@@ -124,7 +146,7 @@ const login = async (req, res) => {
 // @route   GET /users/refresh
 // @access  Private
 
-const refreshToken = async (req, res) => {
+const refreshToken = async (req, res, next) => {
   const cookies = req.cookies;
   try {
     if (!cookies?.r_token) return res.status(403).json({ message: "No Token" });
@@ -146,12 +168,13 @@ const refreshToken = async (req, res) => {
       Access: response.Access,
       Role: response.Role,
       Department: response.Department,
+      Email: response.Email,
     });
 
     return res.status(200).json(newAccessToken);
   } catch (error) {
     console.log(error);
-    return res.status(500).json({ message: "Something went wrong!" });
+    next(error);
   }
 };
 
@@ -168,6 +191,7 @@ const logout_user = async (req, res) => {
 
   return res.status(200).json({ message: "User is logout" });
 };
+//#endregion
 
 module.exports = {
   createSuperUser,
@@ -175,4 +199,5 @@ module.exports = {
   login,
   refreshToken,
   logout_user,
+  detect_Superuser,
 };
