@@ -6,14 +6,14 @@ import { BiSolidHelpCircle } from "react-icons/bi";
 import { FiChevronDown } from "react-icons/fi";
 import { useAuth } from "../zustand/Auth";
 import { useNavigate } from "react-router-dom";
-import { jwtDecode } from "jwt-decode";
+import { decodedUser } from "../utils/GlobalVariables";
 
 const Navbar = () => {
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const { logoutUser, user } = useAuth();
+  const { logoutUser } = useAuth();
   const navigate = useNavigate();
 
-  const decoded = jwtDecode(user);
+  const decoded = decodedUser();
 
   const getInitials = (name) => {
     if (!name) return "";
@@ -83,7 +83,7 @@ const Navbar = () => {
               <div className="relative ml-2">
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-slate-700 transition-colors"
+                  className="cursor-pointer flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-slate-700 transition-colors"
                 >
                   <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
                     <span className="text-white text-sm font-semibold">
@@ -108,7 +108,7 @@ const Navbar = () => {
                     </div>
                     <button
                       onClick={() => logoutUser()}
-                      className="w-full flex items-center space-x-2 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                      className="cursor-pointer w-full flex items-center space-x-2 px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
                     >
                       <GiExitDoor className="text-lg text-red-500" />
                       <span>Logout</span>

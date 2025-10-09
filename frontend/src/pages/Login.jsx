@@ -1,7 +1,5 @@
-import axios from "axios";
-import React from "react";
 import { useState } from "react";
-import { FaUser, FaLock, FaEye } from "react-icons/fa";
+import { FaUser, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import { useAuth } from "../zustand/Auth";
 
 const Login = () => {
@@ -9,6 +7,7 @@ const Login = () => {
     Username: "",
     Password: "",
   });
+  const [displayPassword, setDisplayPassword] = useState(false);
 
   const { loginUser, loginLoading, error, errorMessage } = useAuth();
 
@@ -84,7 +83,7 @@ const Login = () => {
                   <FaLock className="text-gray-400" />
                 </div>
                 <input
-                  type="password"
+                  type={displayPassword ? "text" : "password"}
                   required
                   onChange={(e) =>
                     setInputFields({ ...inputFields, Password: e.target.value })
@@ -94,10 +93,15 @@ const Login = () => {
                   placeholder="Enter your password"
                 />
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => setDisplayPassword(!displayPassword)}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
-                  <FaEye className="text-gray-400 hover:text-gray-600" />
+                  {displayPassword ? (
+                    <FaEyeSlash className="text-gray-400 hover:text-gray-600" />
+                  ) : (
+                    <FaEye className="text-gray-400 hover:text-gray-600" />
+                  )}
                 </button>
               </div>
             </div>

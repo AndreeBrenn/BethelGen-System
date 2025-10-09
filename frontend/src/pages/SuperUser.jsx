@@ -33,8 +33,6 @@ const SuperUser = () => {
           navigate("/login");
         }
 
-        console.log(res.data.count);
-
         return;
       } catch (error) {
         handleApiError(error);
@@ -51,6 +49,7 @@ const SuperUser = () => {
 
   const create_superuser = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
       if (inputFields.Password !== inputFields.ConfirmPassword) {
         alert("Password doesn't match!");
@@ -67,6 +66,8 @@ const SuperUser = () => {
     } catch (error) {
       console.log(error);
       alert("Something went wrong");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -211,7 +212,7 @@ const SuperUser = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 shadow-lg hover:shadow-xl"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 shadow-lg hover:shadow-xl disabled:bg-gray-500 disabled:cursor-not-allowed"
             >
               Create SuperUser Account
             </button>

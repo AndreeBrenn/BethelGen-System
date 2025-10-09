@@ -1,22 +1,13 @@
-import React, { useEffect } from "react";
 import { RxDashboard } from "react-icons/rx";
-import { MdPeople, MdSettings, MdAssessment } from "react-icons/md";
 import { FiFileText } from "react-icons/fi";
-import Navbar from "../components/NavBar";
+import Navbar from "../components/Navbar";
+import { decodedUser } from "../utils/GlobalVariables";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
-  // Simulated data - replace with your actual data
-  const user = { fullName: "John Doe" };
-  const decode = {
-    access: [
-      "Policy Management",
-      "Claims",
-      "Underwriting",
-      "Customer Service",
-      "Procurement",
-      "Settings",
-    ],
-  };
+  const decode = decodedUser();
+  const navigate = useNavigate();
+
   const pages = [
     { ID: 1, DEPARTMENT_NAME: "Claims" },
     { ID: 2, DEPARTMENT_NAME: "Underwriting" },
@@ -25,10 +16,6 @@ const Dashboard = () => {
     { ID: 5, DEPARTMENT_NAME: "Procurement" },
     { ID: 6, DEPARTMENT_NAME: "Settings" },
   ];
-
-  useEffect(() => {
-    // getDepartments();
-  }, []);
 
   return (
     <>
@@ -41,7 +28,7 @@ const Dashboard = () => {
           {/* Core Modules Section */}
 
           {/* Departments Section */}
-          {pages.filter((fil) => decode?.access?.includes(fil.DEPARTMENT_NAME))
+          {pages.filter((fil) => decode?.Access?.includes(fil.DEPARTMENT_NAME))
             .length > 0 && (
             <div>
               <div className="flex items-center mb-6">
@@ -54,14 +41,12 @@ const Dashboard = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {pages
                   .filter((fil) =>
-                    decode?.access?.includes(fil.DEPARTMENT_NAME)
+                    decode?.Access?.includes(fil.DEPARTMENT_NAME)
                   )
                   .map((data) => (
                     <div
                       key={data.ID}
-                      onClick={() =>
-                        handleNavigate(`/transaction/${data.DEPARTMENT_NAME}`)
-                      }
+                      onClick={() => navigate(`/${data.DEPARTMENT_NAME}`)}
                       className="group bg-white rounded-xl shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer border border-slate-200 hover:border-blue-400 overflow-hidden"
                     >
                       <div className="h-2 bg-gradient-to-r from-blue-500 to-blue-600 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>

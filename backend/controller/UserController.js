@@ -72,7 +72,7 @@ const createUser = async (req, res) => {
   try {
     const userExist = await Users.findOne({
       where: {
-        [Op.or]: [{ Username: UserData.Username }, { Email: UserData.Email }],
+        [Op.or]: [{ Username: userData.Username }, { Email: userData.Email }],
       },
     });
 
@@ -85,6 +85,31 @@ const createUser = async (req, res) => {
 
     const { Password, ...rest } = userData;
     const result = await Users.create({ ...rest, Password: hashedPassword });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.log(error);
+    next(error);
+  }
+};
+
+// @desc    Get Users
+// @route   Get /users/create-users
+// @access  Private
+
+const getAllUsers = async (req, res) => {
+  const { search } = req.params;
+
+  console.log(search);
+  try {
+    if (!search || search.trim() === "" || search.toLowerCase() === "null") {
+      const fullResult = await Users.findAll();
+      return res.status(200).json(fullResult);
+    }
+
+    const result = await Users.findAll({
+      where: { FullName: { [Op.substring]: search } },
+    });
 
     return res.status(200).json(result);
   } catch (error) {
@@ -200,4 +225,5 @@ module.exports = {
   refreshToken,
   logout_user,
   detect_Superuser,
+  getAllUsers,
 };
