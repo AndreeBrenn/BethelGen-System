@@ -1,47 +1,63 @@
 import React, { useEffect, useState } from "react";
-import {
-  MdPeople,
-  MdEdit,
-  MdDelete,
-  MdAdd,
-  MdClose,
-  MdSearch,
-} from "react-icons/md";
-import { FaUserShield, FaUserTie, FaUser } from "react-icons/fa";
+import { MdPeople, MdEdit, MdDelete, MdAdd, MdSearch } from "react-icons/md";
+import { FaUserShield, FaUserTie, FaUser, FaSearch } from "react-icons/fa";
 import CreateUserModal from "../modals/SettingsModal/CreateUserModal";
 import usePrivateAxios from "../hooks/useProtectedAxios";
 import { handleApiError } from "../utils/HandleError";
 import moment from "moment";
+import EditUserModal from "../modals/SettingsModal/EditUserModal";
+import React_Paginate from "../utils/React_Paginate";
 
 const AdminSettings = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(null);
   const [searchTerm, setSearchTerm] = useState(null);
   const axiosPrivate = usePrivateAxios();
   const [users, setUsers] = useState([]);
+  const [appliedSearch, setAppliedSearch] = useState("");
+
+  const [currentPage, setCurrentPage] = useState(0);
+  const [itemsPerPage, setItemPerPage] = useState(5);
+  const [itemOffset, setItemOffset] = useState(0);
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
     const controller = new AbortController();
 
     const getAllUsers = async () => {
-      try {
-        const res = await axiosPrivate.get(`/users/get-users/${searchTerm}`, {
-          signal: controller.signal,
-        });
+      const res = await axiosPrivate.get(`/users/get-users`, {
+        params: {
+          search: searchTerm,
+          itemsPerPage,
+          offset: itemOffset,
+        },
+      });
 
-        setUsers(res.data);
-      } catch (error) {
-        handleApiError(error);
+      if (isMounted) {
+        setUsers(res.data.rows);
+        setCount(res.data.count);
       }
     };
 
-    getAllUsers();
+    getAllUsers().catch((error) => {
+      if (isMounted && error.name !== "CanceledError") {
+        handleApiError(error);
+      }
+    });
 
     return () => {
       isMounted = false;
       controller.abort();
     };
-  }, []);
+  }, [itemOffset, itemsPerPage, appliedSearch]);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setAppliedSearch(searchTerm);
+    setItemOffset(0);
+    setCurrentPage(0);
+  };
 
   const getRoleIcon = (role) => {
     if (role === "Administrator")
@@ -114,16 +130,22 @@ const AdminSettings = () => {
 
       {/* Search Bar */}
       <div className="bg-white border border-slate-200 rounded-lg p-4 mb-4 shadow-sm">
-        <div className="relative">
+        <form onSubmit={handleSearch} className="relative flex">
           <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl" />
           <input
             type="text"
             placeholder="Search by name, email, or department..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           />
-        </div>
+          <button
+            type="submit"
+            className="bg-blue-600 text-white p-3 rounded-r-lg"
+          >
+            <FaSearch />
+          </button>
+        </form>
       </div>
 
       {/* Users Table */}
@@ -151,67 +173,92 @@ const AdminSettings = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {users.map((user) => (
-                <tr
-                  key={user.id}
-                  className="hover:bg-slate-50 transition-colors"
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                        {user.FullName.split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </div>
-                      <div>
-                        <div className="font-semibold text-slate-800">
-                          {user.FullName}
+              {users.map((user) => {
+                const FullName = user.LastName + " " + user.FirstName;
+                return (
+                  <tr
+                    key={user.id}
+                    className="hover:bg-slate-50 transition-colors"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
+                          {FullName.split(" ")
+                            .map((n) => n[0])
+                            .join("")}
                         </div>
-                        <div className="text-sm text-slate-500">
-                          {user.Email}
+                        <div>
+                          <div className="font-semibold text-slate-800">
+                            {FullName}
+                          </div>
+                          <div className="text-sm text-slate-500">
+                            {user.Email}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-2">
-                      {getRoleIcon(user.Role)}
-                      <span className="text-sm font-medium text-slate-700">
-                        {user.role}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-2">
+                        {getRoleIcon(user.Role)}
+                        <span className="text-sm font-medium text-slate-700">
+                          {user.role}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-slate-600">
+                        {user.Department}
                       </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-slate-600">
-                      {user.Department}
-                    </span>
-                  </td>
+                    </td>
 
-                  <td className="px-6 py-4">
-                    <span className="text-sm text-slate-600">
-                      {moment(user.createdAt).format("MMM-DD-YYYY")}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center justify-center space-x-2">
-                      <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                        <MdEdit className="text-lg" />
-                      </button>
-                      <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                        <MdDelete className="text-lg" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-slate-600">
+                        {moment(user.createdAt).format("MMM-DD-YYYY")}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-center space-x-2">
+                        <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                          <MdEdit
+                            onClick={() => setShowEditModal(user)}
+                            className="text-lg cursor-pointer"
+                          />
+                        </button>
+                        <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                          <MdDelete className="text-lg" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       </div>
 
+      <React_Paginate
+        itemsPerPage={itemsPerPage}
+        count={count}
+        setItemOffset={setItemOffset}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+      />
+
       {/* Create User Modal */}
       {showCreateModal && (
-        <CreateUserModal setShowCreateModal={setShowCreateModal} />
+        <CreateUserModal
+          setShowCreateModal={setShowCreateModal}
+          setUsers={setUsers}
+        />
+      )}
+      {/* Edit User Modal */}
+      {showEditModal && (
+        <EditUserModal
+          setShowEditModal={setShowEditModal}
+          showEditModal={showEditModal}
+          setUsers={setUsers}
+        />
       )}
     </div>
   );

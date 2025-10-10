@@ -7,12 +7,13 @@ import { useNavigate } from "react-router-dom";
 
 const SuperUser = () => {
   const [inputFields, setInputFields] = useState({
-    FullName: "Administrator",
+    LastName: "Administrator",
+    FirstName: "admin",
     Username: "",
     Password: "",
     Email: "",
     Role: 0,
-    Access: ["Settings"],
+    Access: ["Settings", "Admin Settings"],
     Department: "IT",
     ConfirmPassword: "",
   });

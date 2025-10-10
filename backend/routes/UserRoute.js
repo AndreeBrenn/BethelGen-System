@@ -7,6 +7,7 @@ const {
   logout_user,
   detect_Superuser,
   getAllUsers,
+  updateUser,
 } = require("../controller/UserController");
 const router = express.Router();
 const { protected } = require("../middleware/protect");
@@ -19,6 +20,7 @@ router.get("/detect-superuser", detect_Superuser);
 
 // PROTECTED ROUTES
 router.post("/create-users", protected, createUser);
-router.get("/get-users/:search", protected, getAllUsers);
+router.get("/get-users", protected, getAllUsers);
+router.put("/update-users", protected, updateUser);
 
 module.exports = router;

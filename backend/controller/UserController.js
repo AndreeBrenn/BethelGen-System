@@ -94,24 +94,46 @@ const createUser = async (req, res) => {
 };
 
 // @desc    Get Users
-// @route   Get /users/create-users
+// @route   GET /users/get-users/:search
 // @access  Private
 
 const getAllUsers = async (req, res) => {
-  const { search } = req.params;
+  const { search, offset, itemsPerPage } = req.query;
 
-  console.log(search);
   try {
-    if (!search || search.trim() === "" || search.toLowerCase() === "null") {
-      const fullResult = await Users.findAll();
-      return res.status(200).json(fullResult);
-    }
-
-    const result = await Users.findAll({
-      where: { FullName: { [Op.substring]: search } },
+    const result = await Users.findAndCountAll({
+      where: {
+        [Op.or]: {
+          LastName: { [Op.substring]: search || "" },
+          FirstName: { [Op.substring]: search || "" },
+        },
+      },
+      attributes: { exclude: ["Password"] },
+      limit: itemsPerPage,
+      offset,
     });
 
     return res.status(200).json(result);
+  } catch (error) {
+    console.log(error);
+    next(error);
+  }
+};
+
+// @desc    Update Users
+// @route   PUT /users/update-users/
+// @access  Private
+
+const updateUser = async (req, res) => {
+  const userData = req.body;
+  try {
+    const { ID, ...rest } = userData;
+
+    await Users.update({ ...rest }, { where: { ID } });
+
+    const updatedUser = await Users.findByPk(ID);
+
+    return res.status(200).json(updatedUser);
   } catch (error) {
     console.log(error);
     next(error);
@@ -147,7 +169,8 @@ const login = async (req, res, next) => {
     const accessToken = generate_Access_token({
       ID: user.ID,
       Access: user.Access,
-      FullName: user.FullName,
+      LastName: user.LastName,
+      FirstName: user.FirstName,
       Role: user.Role,
       Department: user.Department,
       Email: user.Email,
@@ -189,7 +212,8 @@ const refreshToken = async (req, res, next) => {
 
     const newAccessToken = generate_Access_token({
       ID: response.ID,
-      FullName: response.FullName,
+      LastName: response.LastName,
+      FirstName: response.FirstName,
       Access: response.Access,
       Role: response.Role,
       Department: response.Department,
@@ -226,4 +250,5 @@ module.exports = {
   logout_user,
   detect_Superuser,
   getAllUsers,
+  updateUser,
 };

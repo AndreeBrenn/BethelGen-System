@@ -1,43 +1,28 @@
 import React, { useState } from "react";
-import { MdAdd, MdClose } from "react-icons/md";
-import { handleApiError } from "../../utils/HandleError";
-import usePrivateAxios from "../../hooks/useProtectedAxios";
+import { MdClose, MdEdit } from "react-icons/md";
 import { permissionGroups } from "../../utils/GlobalVariables";
+import usePrivateAxios from "../../hooks/useProtectedAxios";
+import { handleApiError } from "../../utils/HandleError";
 
-const CreateUserModal = ({ setShowCreateModal, setUsers }) => {
-  const [inputFields, setInputFields] = useState({
-    FirstName: "",
-    LastName: "",
-    Username: "",
-    Password: "",
-    Role: "",
-    Department: "",
-    Access: [],
-  });
+const EditUserModal = ({ setShowEditModal, showEditModal, setUsers }) => {
+  const [inputFields, setInputFields] = useState({ ...showEditModal });
   const [loading, setLoading] = useState(false);
   const axiosPrivate = usePrivateAxios();
 
-  const AddUser = async (e) => {
+  const update_user = async (e) => {
     e.preventDefault();
+
     setLoading(true);
-
     try {
-      const res = await axiosPrivate.post("/users/create-users", inputFields);
+      const res = await axiosPrivate.put("/users/update-users", inputFields);
 
-      setUsers((prev) => [...prev, res.data]);
+      setUsers((prevData) =>
+        prevData.map((item) => (item.ID === res.data.ID ? res.data : item))
+      );
 
-      alert("User Created");
-
-      setInputFields({
-        FirstName: "",
-        LastName: "",
-        Username: "",
-        Password: "",
-        Role: "",
-        Department: "",
-        Access: [],
-      });
+      alert("User Updated Successfully");
     } catch (error) {
+      console.log(error);
       handleApiError(error);
     } finally {
       setLoading(false);
@@ -51,19 +36,15 @@ const CreateUserModal = ({ setShowCreateModal, setUsers }) => {
         <div className="flex items-center justify-between p-6 border-b border-slate-200">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-              <MdAdd className="text-xl text-white" />
+              <MdEdit className="text-xl text-white" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-slate-800">
-                Create New User
-              </h2>
-              <p className="text-sm text-slate-500">
-                Add a new user to the system
-              </p>
+              <h2 className="text-2xl font-bold text-slate-800">Edit User</h2>
+              <p className="text-sm text-slate-500">Edit this user</p>
             </div>
           </div>
           <button
-            onClick={() => setShowCreateModal(false)}
+            onClick={() => setShowEditModal(null)}
             className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
           >
             <MdClose className="text-2xl text-slate-600" />
@@ -72,7 +53,7 @@ const CreateUserModal = ({ setShowCreateModal, setUsers }) => {
 
         {/* Modal Body */}
         <div className="p-6">
-          <form onSubmit={AddUser} className="space-y-5">
+          <form onSubmit={update_user} className="space-y-5">
             {/* Personal Information Section */}
             <div>
               <h3 className="text-lg font-semibold text-slate-800 mb-4">
@@ -85,14 +66,13 @@ const CreateUserModal = ({ setShowCreateModal, setUsers }) => {
                   </label>
                   <input
                     type="text"
-                    placeholder="Juan"
+                    value={inputFields.FirstName}
                     onChange={(e) =>
                       setInputFields({
                         ...inputFields,
                         FirstName: e.target.value,
                       })
                     }
-                    value={inputFields.FirstName}
                     required
                     className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -103,15 +83,14 @@ const CreateUserModal = ({ setShowCreateModal, setUsers }) => {
                   </label>
                   <input
                     type="text"
+                    value={inputFields.LastName}
                     onChange={(e) =>
                       setInputFields({
                         ...inputFields,
                         LastName: e.target.value,
                       })
                     }
-                    value={inputFields.LastName}
                     required
-                    placeholder="Dela Cruz"
                     className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -136,9 +115,8 @@ const CreateUserModal = ({ setShowCreateModal, setUsers }) => {
                         Username: e.target.value,
                       })
                     }
-                    value={inputFields.Username}
                     required
-                    placeholder="Username"
+                    value={inputFields.Username}
                     className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -148,30 +126,11 @@ const CreateUserModal = ({ setShowCreateModal, setUsers }) => {
                   </label>
                   <input
                     type="email"
+                    value={inputFields.Email}
                     onChange={(e) =>
                       setInputFields({ ...inputFields, Email: e.target.value })
                     }
-                    value={inputFields.Email}
                     required
-                    placeholder="juan.delacruz@bethelgen.com"
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Password <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="password"
-                    onChange={(e) =>
-                      setInputFields({
-                        ...inputFields,
-                        Password: e.target.value,
-                      })
-                    }
-                    value={inputFields.Password}
-                    required
-                    placeholder="••••••••"
                     className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -189,10 +148,10 @@ const CreateUserModal = ({ setShowCreateModal, setUsers }) => {
                     Role <span className="text-red-500">*</span>
                   </label>
                   <select
+                    value={inputFields.Role}
                     onChange={(e) =>
                       setInputFields({ ...inputFields, Role: e.target.value })
                     }
-                    value={inputFields.Role}
                     required
                     className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
@@ -212,13 +171,13 @@ const CreateUserModal = ({ setShowCreateModal, setUsers }) => {
                     Department <span className="text-red-500">*</span>
                   </label>
                   <select
+                    value={inputFields.Department}
                     onChange={(e) =>
                       setInputFields({
                         ...inputFields,
                         Department: e.target.value,
                       })
                     }
-                    value={inputFields.Department}
                     required
                     className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
@@ -283,6 +242,7 @@ const CreateUserModal = ({ setShowCreateModal, setUsers }) => {
                             <input
                               onChange={(e) => {
                                 const isChecked = e.target.checked;
+
                                 setInputFields((prev) => {
                                   let newAccess;
                                   if (isChecked) {
@@ -318,18 +278,18 @@ const CreateUserModal = ({ setShowCreateModal, setUsers }) => {
             {/* Modal Footer */}
             <div className="flex items-center justify-end space-x-3 pt-6 border-t border-slate-200">
               <button
+                onClick={() => setShowEditModal(null)}
                 type="button"
-                onClick={() => setShowCreateModal(false)}
                 className="px-6 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium"
               >
                 Cancel
               </button>
               <button
-                type="submit"
                 disabled={loading}
+                type="submit"
                 className="px-6 py-2.5 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors font-medium shadow-md disabled:cursor-not-allowed disabled:bg-gray-600"
               >
-                Create User
+                Update
               </button>
             </div>
           </form>
@@ -339,4 +299,4 @@ const CreateUserModal = ({ setShowCreateModal, setUsers }) => {
   );
 };
 
-export default CreateUserModal;
+export default EditUserModal;
