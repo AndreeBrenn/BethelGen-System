@@ -8,9 +8,13 @@ import { useAuth } from "./zustand/Auth";
 import { useEffect } from "react";
 import MissingPage from "./pages/MissingPage";
 import PrivateRoute from "./routes/PrivateRoute";
-import Settings from "./pages/Settings";
-import AdminSettings from "./pages/AdminSettings";
+import Settings from "./pages/SettingsPages/Settings";
+import AdminSettings from "./pages/SettingsPages/AdminSettings";
 import SettingsLayout from "./layout/SettingsLayout";
+import Inventory from "./pages/Inventory/Inventory";
+import Property from "./pages/Inventory/Property";
+import InventoryLayout from "./layout/InventoryLayout";
+import Attributes from "./pages/Inventory/Attributes";
 
 function App() {
   const { refreshToken, isLoading } = useAuth();
@@ -47,6 +51,18 @@ function App() {
           <Route index element={<Settings />} />
           <Route element={<PrivateRoute route={"Admin Settings"} />}>
             <Route path="Admin" element={<AdminSettings />} />
+          </Route>
+        </Route>
+      </Route>
+
+      <Route element={<PrivateRoute route={"Inventory"} />}>
+        <Route path="/Inventory" element={<InventoryLayout />}>
+          <Route index element={<Inventory />} />
+          <Route element={<PrivateRoute route={"Property"} />}>
+            <Route path="Property" element={<Property />} />
+          </Route>
+          <Route element={<PrivateRoute route={"InventoryAttributes"} />}>
+            <Route path="Attributes" element={<Attributes />} />
           </Route>
         </Route>
       </Route>

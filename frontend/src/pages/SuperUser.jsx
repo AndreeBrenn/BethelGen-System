@@ -16,6 +16,7 @@ const SuperUser = () => {
     Access: ["Settings", "Admin Settings"],
     Department: "IT",
     ConfirmPassword: "",
+    Branch: "HeadOffice",
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();

@@ -15,16 +15,6 @@ const jwt = require("jsonwebtoken");
 const createSuperUser = async (req, res, next) => {
   const userData = req.body;
   try {
-    const userExist = await Users.findOne({
-      where: {
-        [Op.or]: [{ Username: userData.Username }, { Email: userData.Email }],
-      },
-    });
-
-    if (userExist) {
-      return res.status(409).json({ message: "User already exist!" });
-    }
-
     const userCount = await Users.count();
     if (userCount !== 0) {
       return res.status(403).json({ message: "ACCESS DENY" });
@@ -67,19 +57,9 @@ const detect_Superuser = async (req, res, next) => {
 // @route   POST /users/create-users
 // @access  Private
 
-const createUser = async (req, res) => {
+const createUser = async (req, res, next) => {
   const userData = req.body;
   try {
-    const userExist = await Users.findOne({
-      where: {
-        [Op.or]: [{ Username: userData.Username }, { Email: userData.Email }],
-      },
-    });
-
-    if (userExist) {
-      return res.status(409).json({ message: "User already exist!" });
-    }
-
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hashSync(userData.Password, salt);
 
@@ -97,16 +77,18 @@ const createUser = async (req, res) => {
 // @route   GET /users/get-users/:search
 // @access  Private
 
-const getAllUsers = async (req, res) => {
+const getAllUsers = async (req, res, next) => {
   const { search, offset, itemsPerPage } = req.query;
 
   try {
     const result = await Users.findAndCountAll({
       where: {
-        [Op.or]: {
-          LastName: { [Op.substring]: search || "" },
-          FirstName: { [Op.substring]: search || "" },
-        },
+        ...(search && {
+          [Op.or]: [
+            { LastName: { [Op.iLike]: `%${search}%` } },
+            { FirstName: { [Op.iLike]: `%${search}%` } },
+          ],
+        }),
       },
       attributes: { exclude: ["Password"] },
       limit: itemsPerPage,
@@ -124,7 +106,7 @@ const getAllUsers = async (req, res) => {
 // @route   PUT /users/update-users/
 // @access  Private
 
-const updateUser = async (req, res) => {
+const updateUser = async (req, res, next) => {
   const userData = req.body;
   try {
     const { ID, ...rest } = userData;

@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { MdPeople, MdEdit, MdDelete, MdAdd, MdSearch } from "react-icons/md";
 import { FaUserShield, FaUserTie, FaUser, FaSearch } from "react-icons/fa";
-import CreateUserModal from "../modals/SettingsModal/CreateUserModal";
-import usePrivateAxios from "../hooks/useProtectedAxios";
-import { handleApiError } from "../utils/HandleError";
+import CreateUserModal from "../../modals/SettingsModal/CreateUserModal";
+import usePrivateAxios from "../../hooks/useProtectedAxios";
+import { handleApiError } from "../../utils/HandleError";
 import moment from "moment";
-import EditUserModal from "../modals/SettingsModal/EditUserModal";
-import React_Paginate from "../utils/React_Paginate";
+import EditUserModal from "../../modals/SettingsModal/EditUserModal";
+import React_Paginate from "../../utils/React_Paginate";
 
 const AdminSettings = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -100,9 +100,7 @@ const AdminSettings = () => {
           <div className="text-slate-500 text-sm font-medium mb-1">
             Total Users
           </div>
-          <div className="text-2xl font-bold text-slate-800">
-            {users.length}
-          </div>
+          <div className="text-2xl font-bold text-slate-800">{count}</div>
         </div>
         <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-sm">
           <div className="text-slate-500 text-sm font-medium mb-1">

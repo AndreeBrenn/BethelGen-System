@@ -13,7 +13,7 @@ const Dashboard = () => {
     { ID: 2, DEPARTMENT_NAME: "Underwriting" },
     { ID: 3, DEPARTMENT_NAME: "Policy Management" },
     { ID: 4, DEPARTMENT_NAME: "Customer Service" },
-    { ID: 5, DEPARTMENT_NAME: "Procurement" },
+    { ID: 5, DEPARTMENT_NAME: "Inventory" },
     { ID: 6, DEPARTMENT_NAME: "Settings" },
   ];
 

@@ -23,7 +23,7 @@ const EditUserModal = ({ setShowEditModal, showEditModal, setUsers }) => {
       alert("User Updated Successfully");
     } catch (error) {
       console.log(error);
-      handleApiError(error);
+      //handleApiError(error);
     } finally {
       setLoading(false);
     }

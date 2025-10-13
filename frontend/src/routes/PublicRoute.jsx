@@ -6,14 +6,15 @@ const PublicRoute = () => {
   const routeData = localStorage.getItem("route");
   const location = useLocation();
 
-  const BlockingPage = () => {
-    return (
-      <div className="w-screen bg-white h-screen fixed top-0 left-0 z-[999]" />
-    );
-  };
-  return isLoading ? (
-    <BlockingPage />
-  ) : !user ? (
+  // const BlockingPage = () => {
+  //   return (
+  //     <div className="w-screen bg-white h-screen fixed top-0 left-0 z-[999]" />
+  //   );
+  // };
+  // return isLoading ? (
+  //   <BlockingPage />
+  // ) :
+  return !user ? (
     <Outlet />
   ) : routeData ? (
     <Navigate to={routeData} state={{ from: location }} replace />

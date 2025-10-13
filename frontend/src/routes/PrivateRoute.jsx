@@ -6,15 +6,15 @@ const PrivateRoute = ({ route }) => {
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
-  const BlockingPage = () => {
-    return (
-      <div className="w-screen bg-white h-screen fixed top-0 left-0 z-[999]" />
-    );
-  };
+  // const BlockingPage = () => {
+  //   return (
+  //     <div className="w-screen bg-white h-screen fixed top-0 left-0 z-[999]" />
+  //   );
+  // };
 
-  if (isLoading) {
-    return <BlockingPage />;
-  }
+  // if (isLoading) {
+  //   return <BlockingPage />;
+  // }
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;

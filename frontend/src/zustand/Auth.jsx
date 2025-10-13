@@ -25,20 +25,33 @@ export const useAuth = create((set) => ({
       set(() => ({ loginLoading: false }));
     }
   },
+  // refreshToken: async () => {
+  //   set(() => ({ isLoading: true }));
+  //   try {
+  //     const res = await axios.get(
+  //       import.meta.env.VITE_AXIOS_URL + "/users/refresh"
+  //     );
+
+  //     set((state) => ({ user: (state.data = res.data) }));
+  //     return res.data;
+  //   } catch (error) {
+  //     console.log(error);
+  //     set(() => ({ error: true, errorMessage: error, user: null }));
+  //   } finally {
+  //     set(() => ({ isLoading: false }));
+  //   }
+  // },
   refreshToken: async () => {
-    set(() => ({ isLoading: true }));
     try {
       const res = await axios.get(
-        import.meta.env.VITE_AXIOS_URL + "/users/refresh"
+        import.meta.env.VITE_AXIOS_URL + "/users/refresh",
+        { withCredentials: true }
       );
-
-      set((state) => ({ user: (state.data = res.data) }));
+      set({ user: res.data });
       return res.data;
     } catch (error) {
-      console.log(error);
-      set(() => ({ error: true, errorMessage: error, user: null }));
-    } finally {
-      set(() => ({ isLoading: false }));
+      set({ user: null });
+      // throw error;
     }
   },
   logoutUser: async () => {

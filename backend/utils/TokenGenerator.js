@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 
 const generate_Access_token = (payload) => {
   return jwt.sign({ ...payload }, process.env.SECRET_ACCESS_TOKEN, {
-    expiresIn: "10m",
+    expiresIn: "15m",
     issuer: "http://localhost:3000", // or your app name
   });
 };
