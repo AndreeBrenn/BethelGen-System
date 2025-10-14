@@ -15,6 +15,7 @@ module.exports = (sequelize, DataTypes) => {
     Inventory_Category.hasMany(models.Inventory_Subcategory, {
       foreignKey: { name: "Inv_SubCat_ID" },
       onDelete: "cascade",
+      as: "inv_subcat",
     });
   };
 

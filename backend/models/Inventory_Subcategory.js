@@ -10,8 +10,8 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     },
     Classification: {
-      type: DataTypes.ARRAY(DataTypes.STRING),
-      allowNull: false,
+      type: DataTypes.JSONB,
+      allowNull: true,
     },
   });
 
@@ -19,7 +19,7 @@ module.exports = (sequelize, DataTypes) => {
     Inventory_Subcategory.belongsTo(models.Inventory_Category, {
       foreignKey: "Inv_SubCat_ID",
       targetKey: "ID",
-      as: "Inventory_Category",
+      as: "inv_subcat",
       onDelete: "cascade",
     });
   };
