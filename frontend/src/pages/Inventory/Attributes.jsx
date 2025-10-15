@@ -6,6 +6,9 @@ import {
 import CategoryModal from "../../modals/InventoryModal/CategoryModal";
 import { handleApiError } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
+import InventorySubcategory from "../../components/Inventory/InventorySubcategory";
+import InventoryClassification from "../../components/Inventory/InventoryClassification";
+import DeleteConfirmationModal from "../../modals/reuseable/DeleteConfirmationModal";
 
 const Attributes = () => {
   const [category, setCategory] = useState([]);
@@ -18,6 +21,7 @@ const Attributes = () => {
     subcategoryID: null,
   });
   const [trigger, setTrigger] = useState(0);
+  const [showDeleteModal, setShowDeleteModal] = useState(null);
 
   const axiosPrivate = usePrivateAxios();
 
@@ -61,6 +65,40 @@ const Attributes = () => {
       controller.abort();
     };
   }, [itemOffset, itemsPerPage, trigger]);
+
+  const delete_category = async (e, data, type) => {
+    e.preventDefault();
+
+    try {
+      if (type == "classification") {
+        const newItem = data.items.Classification.filter(
+          (fil) => fil.ID != data.part.ID
+        );
+        await axiosPrivate.put("/inventory/update-subcategory", {
+          ID: data.items.ID,
+          Classification: newItem,
+        });
+        setShowDeleteModal(null);
+        setTrigger((prev) => prev + 1);
+      }
+
+      if (type == "category") {
+        await axiosPrivate.delete(`/inventory/delete-category/${data.ID}`);
+        setShowDeleteModal(null);
+        setTrigger((prev) => prev + 1);
+      }
+
+      if (type == "subcategory") {
+        await axiosPrivate.delete(`/inventory/delete-subcategory/${data.ID}`);
+        setShowDeleteModal(null);
+        setTrigger((prev) => prev + 1);
+      }
+
+      alert("Delete Data");
+    } catch (error) {
+      handleApiError(error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -168,12 +206,27 @@ const Attributes = () => {
                         +
                       </button>
                       <button
+                        onClick={() =>
+                          setShowModal({
+                            purpose: "EditCategory",
+                            show: true,
+                            type: "update_category",
+                            data: data,
+                          })
+                        }
                         className="text-gray-600 hover:text-gray-700 p-2 rounded hover:bg-gray-100"
                         title="Edit"
                       >
                         ✏️
                       </button>
                       <button
+                        onClick={(e) =>
+                          setShowDeleteModal({
+                            e: e,
+                            data: data,
+                            type: "category",
+                          })
+                        }
                         className="text-red-600 hover:text-red-700 p-2 rounded hover:bg-red-50"
                         title="Delete"
                       >
@@ -186,115 +239,22 @@ const Attributes = () => {
                     <div className="pl-10 pb-2">
                       {data.inv_subcat?.map((items) => (
                         <div className="mt-2 border-l-2 border-gray-200">
-                          <div className="flex items-center justify-between p-3 hover:bg-gray-50 transition-colors ml-2 rounded">
-                            <div className="flex items-center gap-3 flex-1">
-                              <button
-                                onClick={() =>
-                                  setToggleStates((prev) => {
-                                    if (
-                                      toggleStates.subcategories.some(
-                                        (som) => som == items.ID
-                                      )
-                                    ) {
-                                      return {
-                                        ...prev,
-                                        subcategories:
-                                          toggleStates.subcategories.filter(
-                                            (fil) => fil != items.ID
-                                          ),
-                                      };
-                                    } else {
-                                      return {
-                                        ...prev,
-                                        subcategories: [
-                                          ...toggleStates.subcategories,
-                                          items.ID,
-                                        ],
-                                      };
-                                    }
-                                  })
-                                }
-                                className="text-gray-600 hover:text-gray-900 text-lg"
-                              >
-                                {toggleStates.subcategories.some(
-                                  (som) => som == items.ID
-                                ) ? (
-                                  <MdOutlineKeyboardArrowDown />
-                                ) : (
-                                  <MdOutlineKeyboardArrowRight />
-                                )}
-                              </button>
-                              <span className="text-xl">📁</span>
-                              <span className="font-medium text-gray-800">
-                                {items.Subcategory_name}
-                              </span>
-                              <span className="text-sm text-gray-500">
-                                ({items.Classification.length} Classification)
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() =>
-                                  setShowModal({
-                                    purpose: "AddClassification",
-                                    type: "create_classification",
-                                    data: items.Classification,
-                                    subcategoryID: items.ID,
-                                    show: true,
-                                  })
-                                }
-                                className="text-green-600 hover:text-green-700 p-2 rounded hover:bg-green-50"
-                                title="Add Classification"
-                              >
-                                +
-                              </button>
-                              <button
-                                className="text-gray-600 hover:text-gray-700 p-2 rounded hover:bg-gray-100"
-                                title="Edit"
-                              >
-                                ✏️
-                              </button>
-                              <button
-                                className="text-red-600 hover:text-red-700 p-2 rounded hover:bg-red-50"
-                                title="Delete"
-                              >
-                                🗑️
-                              </button>
-                            </div>
-                          </div>
+                          <InventorySubcategory
+                            items={items}
+                            toggleStates={toggleStates}
+                            setShowModal={setShowModal}
+                            setToggleStates={setToggleStates}
+                            setShowDeleteModal={setShowDeleteModal}
+                          />
 
                           {toggleStates.subcategories.some(
                             (somsub) => somsub == items.ID
                           ) && (
-                            <div className="pl-10 pb-2">
-                              {items.Classification?.map((part) => (
-                                <div
-                                  key={part.ID}
-                                  className="flex items-center justify-between p-2 hover:bg-gray-50 transition-colors ml-2 rounded mt-1"
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <span className="text-lg">📄</span>
-                                    <span className="text-gray-700">
-                                      {part.Classification_name}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      className="text-gray-600 hover:text-gray-700 p-1 rounded hover:bg-gray-100"
-                                      title="Edit"
-                                    >
-                                      ✏️
-                                    </button>
-                                    <button
-                                      className="text-red-600 hover:text-red-700 p-1 rounded hover:bg-red-50"
-                                      title="Delete"
-                                    >
-                                      🗑️
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                            <InventoryClassification
+                              items={items}
+                              setShowModal={setShowModal}
+                              setShowDeleteModal={setShowDeleteModal}
+                            />
                           )}
                         </div>
                       ))}
@@ -311,6 +271,20 @@ const Attributes = () => {
             showModal={showModal}
             setShowModal={setShowModal}
             setTrigger={setTrigger}
+          />
+        )}
+
+        {showDeleteModal && (
+          <DeleteConfirmationModal
+            isOpen={showDeleteModal}
+            onClose={() => setShowDeleteModal(null)}
+            onConfirm={() =>
+              delete_category(
+                showDeleteModal.e,
+                showDeleteModal.data,
+                showDeleteModal.type
+              )
+            }
           />
         )}
       </div>

@@ -41,7 +41,7 @@ const Navbar = () => {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-white font-semibold text-lg tracking-tight">
-                    BETHEL GEN
+                    BETHEL SHIELD
                   </span>
                   <span className="text-slate-400 text-xs">
                     Insurance and Surety Corporation
