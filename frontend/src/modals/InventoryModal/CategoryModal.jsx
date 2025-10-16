@@ -14,7 +14,6 @@ const CategoryModal = ({ showModal, setShowModal, setTrigger }) => {
       : ""
   );
 
-  console.log(showModal);
   const [loading, setLoading] = useState(false);
 
   const axiosPrivate = usePrivateAxios();

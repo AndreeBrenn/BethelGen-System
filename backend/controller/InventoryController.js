@@ -1,4 +1,9 @@
-const { Inventory_Category, Inventory_Subcategory } = require("../models");
+const {
+  Inventory_Category,
+  Inventory_Subcategory,
+  Inventory_Item,
+  Inventory_Stocks,
+} = require("../models");
 
 //#region CATEGORY
 const create_category = async (req, res, next) => {
@@ -12,6 +17,7 @@ const create_category = async (req, res, next) => {
   }
 };
 
+// GET CATEGORY ON PAGE
 const get_category = async (req, res, next) => {
   const { search, limit, offset } = req.query;
 
@@ -33,6 +39,24 @@ const get_category = async (req, res, next) => {
     });
 
     return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET CATEGORY IN DROPDOWN
+const get_all_category = async (req, res, next) => {
+  try {
+    const category = await Inventory_Category.findAll({
+      include: [
+        {
+          model: Inventory_Subcategory,
+          as: "inv_subcat",
+        },
+      ],
+    });
+
+    return res.status(200).json(category);
   } catch (error) {
     next(error);
   }
@@ -124,6 +148,34 @@ const delete_subcategory = async (req, res, next) => {
 
 //#endregion
 
+//#region INVENTORY ITEM / INVENTORY STOCKS
+const create_Inventory_item = async (req, res, next) => {
+  const inventoryData = req.body;
+
+  console.log(inventoryData);
+
+  try {
+    const itemResult = await Inventory_Item.create({
+      Item_name: inventoryData.item_name,
+      Item_category: inventoryData.item_category,
+      Item_subcategory: inventoryData.item_subcategory,
+      Item_classification: inventoryData.item_classification,
+    });
+
+    const serialsWithItemId = inventoryData.serials.map((serial) => ({
+      ...serial,
+      Item_ID: itemResult.ID, // Adjust field name to match your foreign key
+    }));
+    const stockResult = await Inventory_Stocks.bulkCreate(serialsWithItemId, {
+      validate: true,
+    });
+
+    return res.status(200).json([itemResult, stockResult]);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   create_category,
   get_category,
@@ -133,4 +185,6 @@ module.exports = {
   update_subcategory,
   delete_category,
   delete_subcategory,
+  create_Inventory_item,
+  get_all_category,
 };
