@@ -2,15 +2,16 @@ import React, { useState } from "react";
 import { useEffect } from "react";
 import { handleApiError } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
+import { decodedUser } from "../../utils/GlobalVariables";
 
-const InventoryAddModal = ({ isOpen, onClose, onAdd }) => {
+const InventoryAddModal = ({ isOpen, onClose }) => {
   const [inputFields, setInputFields] = useState({
     Item_name: "",
     Item_category: { ID: "", name: "" },
     Item_subcategory: { ID: "", name: "" },
     Item_classification: "",
   });
-
+  const [dropDownData, setDropDownData] = useState([]);
   const [stocksData, setStocksData] = useState({
     quantity: 0,
     serial_num: [],
@@ -21,9 +22,8 @@ const InventoryAddModal = ({ isOpen, onClose, onAdd }) => {
     end: 0,
   });
 
+  const user = decodedUser();
   const axiosPrivate = usePrivateAxios();
-
-  const [dropDownData, setDropDownData] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -52,7 +52,6 @@ const InventoryAddModal = ({ isOpen, onClose, onAdd }) => {
   const submit_data = async (e) => {
     e.preventDefault();
 
-    console.log(stocksData);
     try {
       if (radioButton == 1) {
         if (stocksData.quantity != stocksData.serial_num.length) {
@@ -65,6 +64,7 @@ const InventoryAddModal = ({ isOpen, onClose, onAdd }) => {
           item_category: inputFields.Item_category.name,
           item_subcategory: inputFields.Item_subcategory.name,
           item_classification: inputFields.Item_classification,
+          item_origin_branch: user.Branch,
           serials: stocksData.serial_num,
         };
 
@@ -80,18 +80,22 @@ const InventoryAddModal = ({ isOpen, onClose, onAdd }) => {
 
         const data = {
           item_name: inputFields.Item_name,
-          item_category: inputFields.Item_category,
-          item_subcategory: inputFields.Item_subcategory,
+          item_category: inputFields.Item_category.name,
+          item_subcategory: inputFields.Item_subcategory.name,
           item_classification: inputFields.Item_classification,
-          serials: [...Array(Math.max(0, end - start + 1)).keys()].map((i) => ({
-            Item_serial: start + i,
-            Item_branch: item_branch,
-            Item_status: item_status,
+          item_origin_branch: user.Branch,
+          serials: [
+            ...Array(
+              Math.max(0, serialRange.end - serialRange.start + 1)
+            ).keys(),
+          ].map((i) => ({
+            Item_serial: serialRange.start + i,
+            Item_branch: null,
+            Item_status: "Available",
           })),
         };
 
         const res = await axiosPrivate.post("/inventory/create-item", data);
-        console.log(res);
       }
 
       alert("Data is Submitted");
@@ -103,7 +107,7 @@ const InventoryAddModal = ({ isOpen, onClose, onAdd }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 bg-opacity-50 backdrop-blur-sm">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Add New Item</h2>

@@ -1,74 +1,33 @@
 import InventoryAddModal from "../../modals/InventoryModal/InventoryAddModal";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import DeleteConfirmationModal from "../../modals/reuseable/DeleteConfirmationModal";
+import { useEffect } from "react";
+import { handleApiError } from "../../utils/HandleError";
+import usePrivateAxios from "../../hooks/useProtectedAxios";
+import moment from "moment";
+import { MdMoreVert, MdRemoveRedEye } from "react-icons/md";
+import { FiEdit, FiTrash2, FiPackage } from "react-icons/fi";
+import ViewItemPropertyModal from "../../modals/InventoryModal/ViewItemPropertyModal";
+import EditPropertyModal from "../../modals/InventoryModal/EditPropertyModal";
+import ReplenishPropertyModal from "../../modals/InventoryModal/ReplenishPropertyModal";
 
 export default function Property() {
   const [activeTab, setActiveTab] = useState("all-assets");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const [assets, setAssets] = useState([
-    {
-      id: 1,
-      itemName: "Dell Laptop XPS 15",
-      category: "Electronics",
-      subCategory: "Computers",
-      classification: "Fixed Asset",
-      serialNumber: "DL2024-001",
-      quantity: 5,
-      branch: "Main Office",
-      dateAdded: "2024-01-15",
-    },
-    {
-      id: 2,
-      itemName: "Office Chair Ergonomic",
-      category: "Furniture",
-      subCategory: "Seating",
-      classification: "Fixed Asset",
-      serialNumber: "OC2024-045",
-      quantity: 20,
-      branch: "Branch A",
-      dateAdded: "2024-02-20",
-    },
-    {
-      id: 3,
-      itemName: "Printer HP LaserJet",
-      category: "Electronics",
-      subCategory: "Printing",
-      classification: "Fixed Asset",
-      serialNumber: "HP2024-012",
-      quantity: 3,
-      branch: "Main Office",
-      dateAdded: "2024-03-10",
-    },
-  ]);
+  const axiosPrivate = usePrivateAxios();
 
-  const [documents, setDocuments] = useState([
-    {
-      id: 1,
-      itemName: "Property Insurance Policy",
-      category: "Documents",
-      subCategory: "Insurance",
-      classification: "Returnable",
-      serialNumber: "INS-2024-001",
-      quantity: 1,
-      branch: "Main Office",
-      dateAdded: "2024-01-05",
-    },
-    {
-      id: 2,
-      itemName: "Equipment Purchase Agreement",
-      category: "Documents",
-      subCategory: "Contracts",
-      classification: "Returnable",
-      serialNumber: "EPA-2024-023",
-      quantity: 1,
-      branch: "Main Office",
-      dateAdded: "2024-02-15",
-    },
-  ]);
+  const [assets, setAssets] = useState([]);
+  const [documents, setDocuments] = useState([]);
+
+  const [actions, setActions] = useState(null);
+  const [view, setView] = useState(null);
+  const [edit, setEdit] = useState(null);
+  const [replenish, setReplenish] = useState(null);
+  const [deleteItem, setDeleteItem] = useState(null);
+
+  const menuRef = useRef(null);
 
   const currentData = activeTab === "all-assets" ? assets : documents;
   const setCurrentData = activeTab === "all-assets" ? setAssets : setDocuments;
@@ -79,24 +38,43 @@ export default function Property() {
     )
   );
 
-  const handleAddItem = (newItem) => {
-    const item = {
-      id: currentData.length + 1,
-      ...newItem,
+  useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+
+    const get_items = async () => {
+      try {
+        const res = await axiosPrivate.get("/inventory/get-items", {
+          signal: controller.signal,
+        });
+
+        setAssets(res.data);
+      } catch (error) {
+        handleApiError(error);
+      }
     };
-    setCurrentData([...currentData, item]);
-  };
 
-  const handleDeleteClick = (item) => {
-    setSelectedItem(item);
-    setIsDeleteModalOpen(true);
-  };
+    get_items();
 
-  const handleConfirmDelete = () => {
-    setCurrentData(currentData.filter((item) => item.id !== selectedItem.id));
-    setIsDeleteModalOpen(false);
-    setSelectedItem(null);
-  };
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setActions(null); // Close the dropdown
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [setActions]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -203,9 +181,7 @@ export default function Property() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Classification
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Serial Number
-                    </th>
+
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Quantity
                     </th>
@@ -221,60 +197,91 @@ export default function Property() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredData.map((item) => (
+                  {assets.map((item) => (
                     <tr
-                      key={item.id}
+                      key={item.ID}
                       className="hover:bg-gray-50 transition-colors"
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {item.itemName}
+                        {item.Item_name}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {item.category}
+                        {item.Item_category}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {item.subCategory}
+                        {item.Item_subcategory}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                            item.classification === "Fixed Asset"
-                              ? "bg-blue-100 text-blue-800"
-                              : item.classification === "Consumable"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-purple-100 text-purple-800"
-                          }`}
+                          className={`inline-flex px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800`}
                         >
-                          {item.classification}
+                          {item.Item_classification}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
-                        {item.serialNumber}
+
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        {item.available_count}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {item.quantity}
+                        {item.Item_origin_branch}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {item.branch}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {item.dateAdded}
+                        {moment(item.createdAt).format("MM/DD/YYYY - hh:mm A ")}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center gap-2">
+                        <div className="">
                           <button
-                            className="text-gray-600 hover:text-gray-700 p-2 rounded hover:bg-gray-100"
-                            title="Edit"
+                            onClick={() =>
+                              setActions(item.ID == actions ? null : item.ID)
+                            }
+                            className="text-gray-600 hover:text-gray-700 p-2 rounded hover:bg-gray-100 transition-colors"
+                            title="More actions"
                           >
-                            ✏️
+                            <MdMoreVert className="text-xl" />
                           </button>
-                          <button
-                            onClick={() => handleDeleteClick(item)}
-                            className="text-red-600 hover:text-red-700 p-2 rounded hover:bg-red-50"
-                            title="Delete"
-                          >
-                            🗑️
-                          </button>
+
+                          {item.ID == actions && (
+                            <div
+                              ref={menuRef}
+                              className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50"
+                            >
+                              <button
+                                onClick={() =>
+                                  setView({ ID: item.ID, name: item.Item_name })
+                                }
+                                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              >
+                                <MdRemoveRedEye className="text-lg text-blue-600" />
+                                <span>View Details</span>
+                              </button>
+
+                              <button
+                                onClick={() => setEdit(item)}
+                                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              >
+                                <FiEdit className="text-lg text-green-600" />
+                                <span>Edit</span>
+                              </button>
+
+                              <button
+                                onClick={() => setReplenish(item)}
+                                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                              >
+                                <FiPackage className="text-lg text-purple-600" />
+                                <span>Replenish Stock</span>
+                              </button>
+
+                              <div className="border-t border-gray-100 my-1"></div>
+
+                              <button
+                                onClick={() => setDeleteItem(item.ID)}
+                                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                              >
+                                <FiTrash2 className="text-lg" />
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -287,16 +294,33 @@ export default function Property() {
       </div>
 
       {/* Modals */}
+
+      {view && <ViewItemPropertyModal ID_data={view} setView={setView} />}
+      {edit && <EditPropertyModal data={edit} setEdit={setEdit} />}
+      {replenish && (
+        <ReplenishPropertyModal data={replenish} setReplenish={setReplenish} />
+      )}
+
       <InventoryAddModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onAdd={handleAddItem}
       />
 
       <DeleteConfirmationModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleConfirmDelete}
+        isOpen={deleteItem}
+        onClose={() => setDeleteItem(null)}
+        onConfirm={async (e) => {
+          e.preventDefault();
+          try {
+            const res = await axiosPrivate.delete(
+              `/inventory/delete-item/${deleteItem}`
+            );
+
+            alert("Data Deleted!");
+          } catch (error) {
+            handleApiError(error);
+          }
+        }}
       />
     </div>
   );

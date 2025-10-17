@@ -21,12 +21,17 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true,
     },
+    Item_origin_branch: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   });
 
   Inventory_Item.associate = (models) => {
     Inventory_Item.hasMany(models.Inventory_Stocks, {
       foreignKey: { name: "Item_ID" },
       as: "inv_stocks",
+      onDelete: "cascade",
     });
   };
 

@@ -156,6 +156,7 @@ const login = async (req, res, next) => {
       Role: user.Role,
       Department: user.Department,
       Email: user.Email,
+      Branch: user.Branch,
     });
 
     res.cookie("r_token", refreshToken, {
@@ -200,6 +201,7 @@ const refreshToken = async (req, res, next) => {
       Role: response.Role,
       Department: response.Department,
       Email: response.Email,
+      Branch: response.Branch,
     });
 
     return res.status(200).json(newAccessToken);

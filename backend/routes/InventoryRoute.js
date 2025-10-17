@@ -12,6 +12,11 @@ const {
   delete_subcategory,
   create_Inventory_item,
   get_all_category,
+  get_items,
+  get_stocks,
+  update_item,
+  replenish_stock,
+  delete_item,
 } = require("../controller/InventoryController");
 
 router.post("/create-category", protected, create_category);
@@ -26,5 +31,10 @@ router.delete("/delete-subcategory/:ID", protected, delete_subcategory);
 
 //INVENTORY ITEMS / STOCKS
 router.post("/create-item", protected, create_Inventory_item);
+router.get("/get-items", protected, get_items);
+router.get("/get-stocks", protected, get_stocks);
+router.put("/update-item", protected, update_item);
+router.post("/replenish-stocks", protected, replenish_stock);
+router.delete("/delete-item/:ID", protected, delete_item);
 
 module.exports = router;
