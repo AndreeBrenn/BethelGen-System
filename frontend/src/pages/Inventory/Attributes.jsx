@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   MdOutlineKeyboardArrowDown,
   MdOutlineKeyboardArrowRight,
+  MdSearch,
+  MdClear,
 } from "react-icons/md";
 import CategoryModal from "../../modals/InventoryModal/CategoryModal";
 import { handleApiError } from "../../utils/HandleError";
@@ -9,6 +11,8 @@ import usePrivateAxios from "../../hooks/useProtectedAxios";
 import InventorySubcategory from "../../components/Inventory/InventorySubcategory";
 import InventoryClassification from "../../components/Inventory/InventoryClassification";
 import DeleteConfirmationModal from "../../modals/reuseable/DeleteConfirmationModal";
+import React_Paginate from "../../utils/React_Paginate";
+import { FaSearch } from "react-icons/fa";
 
 const Attributes = () => {
   const [category, setCategory] = useState([]);
@@ -20,7 +24,6 @@ const Attributes = () => {
     categoryID: null,
     subcategoryID: null,
   });
-  const [trigger, setTrigger] = useState(0);
   const [showDeleteModal, setShowDeleteModal] = useState(null);
 
   const axiosPrivate = usePrivateAxios();
@@ -35,36 +38,35 @@ const Attributes = () => {
     subcategories: [],
   });
 
-  useEffect(() => {
-    let isMounted = true;
-    const controller = new AbortController();
+  const [appliedSearch, setAppliedSearch] = useState("");
+  const [searchText, setSearchText] = useState("");
 
-    const get_category = async () => {
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setAppliedSearch(searchText);
+    setItemOffset(0);
+    setCurrentPage(0);
+  };
+
+  const get_category = useCallback(async () => {
+    try {
       const res = await axiosPrivate.get("/inventory/get-category", {
         params: {
-          search: "",
-          itemsPerPage,
+          search: appliedSearch,
+          limit: itemsPerPage,
           offset: itemOffset,
         },
       });
+      setCategory(res.data.rows);
+      setCount(res.data.count);
+    } catch (error) {
+      handleApiError(error);
+    }
+  }, [itemOffset, itemsPerPage, appliedSearch]);
 
-      if (isMounted) {
-        setCategory(res.data.rows);
-        setCount(res.data.count);
-      }
-    };
-
-    get_category().catch((error) => {
-      if (isMounted && error.name !== "CanceledError") {
-        handleApiError(error);
-      }
-    });
-
-    return () => {
-      isMounted = false;
-      controller.abort();
-    };
-  }, [itemOffset, itemsPerPage, trigger]);
+  useEffect(() => {
+    get_category();
+  }, [get_category]);
 
   const delete_category = async (e, data, type) => {
     e.preventDefault();
@@ -79,22 +81,20 @@ const Attributes = () => {
           Classification: newItem,
         });
         setShowDeleteModal(null);
-        setTrigger((prev) => prev + 1);
       }
 
       if (type == "category") {
         await axiosPrivate.delete(`/inventory/delete-category/${data.ID}`);
         setShowDeleteModal(null);
-        setTrigger((prev) => prev + 1);
       }
 
       if (type == "subcategory") {
         await axiosPrivate.delete(`/inventory/delete-subcategory/${data.ID}`);
         setShowDeleteModal(null);
-        setTrigger((prev) => prev + 1);
       }
 
       alert("Delete Data");
+      get_category();
     } catch (error) {
       handleApiError(error);
     }
@@ -128,6 +128,38 @@ const Attributes = () => {
               Add Category
             </button>
           </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-lg p-4 mb-4 shadow-sm">
+          <form onSubmit={handleSearch} className="relative flex">
+            <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl" />
+            <input
+              type="text"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search Category"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+
+            <button
+              type="submit"
+              className="bg-blue-600 text-white p-3 rounded-r-lg"
+            >
+              <FaSearch />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setAppliedSearch("");
+                setSearchText("");
+                get_category();
+              }}
+              className="bg-red-600 text-white px-3 rounded-lg ml-3 cursor-pointer"
+            >
+              Clear
+            </button>
+          </form>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6">
@@ -265,12 +297,19 @@ const Attributes = () => {
             </div>
           )}
         </div>
+        <React_Paginate
+          itemsPerPage={itemsPerPage}
+          count={count}
+          setItemOffset={setItemOffset}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+        />
 
         {showModal.show && (
           <CategoryModal
             showModal={showModal}
             setShowModal={setShowModal}
-            setTrigger={setTrigger}
+            trigger={get_category}
           />
         )}
 

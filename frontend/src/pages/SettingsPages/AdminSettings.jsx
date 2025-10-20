@@ -143,6 +143,18 @@ const AdminSettings = () => {
           >
             <FaSearch />
           </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAppliedSearch("");
+              setSearchTerm("");
+              setTrigger((prev) => prev + 1);
+            }}
+            className="bg-red-600 text-white px-3 rounded-lg ml-3 cursor-pointer"
+          >
+            Clear
+          </button>
         </form>
       </div>
 
@@ -221,9 +233,6 @@ const AdminSettings = () => {
                             onClick={() => setShowEditModal(user)}
                             className="text-lg cursor-pointer"
                           />
-                        </button>
-                        <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                          <MdDelete className="text-lg" />
                         </button>
                       </div>
                     </td>

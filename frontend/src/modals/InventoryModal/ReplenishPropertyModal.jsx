@@ -1,9 +1,8 @@
-import React from "react";
 import { useState } from "react";
 import { handleApiError } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 
-const ReplenishPropertyModal = ({ data, setReplenish }) => {
+const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
   const [radioButton, setRadioButton] = useState(1);
   const [stocksData, setStocksData] = useState({
     quantity: 0,
@@ -29,19 +28,32 @@ const ReplenishPropertyModal = ({ data, setReplenish }) => {
           "/inventory/replenish-stocks",
           stocksData.serial_num
         );
-        console.log(res);
+
+        setStocksData({
+          quantity: 0,
+          serial_num: [],
+        });
       }
 
       if (radioButton == 2) {
-        if (serialRange.start > serialRange.end) {
+        if (
+          serialRange.start > serialRange.end ||
+          serialRange.start.trim() == "" ||
+          serialRange.end.trim() == ""
+        ) {
           alert("Invalid Range");
           return;
         }
 
         const stocksData = [
-          ...Array(Math.max(0, serialRange.end - serialRange.start + 1)).keys(),
+          ...Array(
+            Math.max(
+              0,
+              parseInt(serialRange.end) - parseInt(serialRange.start) + 1
+            )
+          ).keys(),
         ].map((i) => ({
-          Item_serial: serialRange.start + i,
+          Item_serial: parseInt(serialRange.start) + i,
           Item_branch: null,
           Item_status: "Available",
           Item_ID: data.ID,
@@ -51,9 +63,16 @@ const ReplenishPropertyModal = ({ data, setReplenish }) => {
           "/inventory/replenish-stocks",
           stocksData
         );
+
+        setSerialRange({
+          start: 0,
+          end: 0,
+        });
       }
 
       alert("Data submitted");
+      setReplenish(null);
+      trigger();
     } catch (error) {
       handleApiError(error);
     }

@@ -5,6 +5,7 @@ const {
   Inventory_Stocks,
   sequelize,
 } = require("../models");
+const { Op } = require("sequelize");
 
 //#region CATEGORY
 
@@ -222,15 +223,46 @@ const create_Inventory_item = async (req, res, next) => {
 // @access  Private
 
 const get_items = async (req, res, next) => {
+  const { search, offset, limit, subcategory } = req.query;
+
   try {
-    const result = await Inventory_Item.findAll({
+    const whereClause = {
+      ...(search && {
+        Item_name: { [Op.iLike]: `%${search}%` },
+      }),
+      // Add subcategory filtering logic
+      ...(subcategory === "Documents"
+        ? { Item_subcategory: "Documents" }
+        : subcategory
+        ? { Item_subcategory: subcategory }
+        : { Item_subcategory: { [Op.ne]: "Documents" } }), // Exclude Documents when subcategory is empty/null
+    };
+
+    const totalCount = await Inventory_Item.count({
+      where: whereClause,
       include: [
         {
           model: Inventory_Stocks,
-          as: "inv_stocks", // use your association alias
+          as: "inv_stocks",
           where: { Item_status: "Available" },
-          attributes: [], // Don't include the actual stock records
-          required: false, // Use LEFT JOIN so items with 0 available stocks still appear
+          attributes: [],
+          required: false,
+        },
+      ],
+      group: ["Inventory_Item.ID"],
+      distinct: true,
+    });
+
+    // Get the rows
+    const rows = await Inventory_Item.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: Inventory_Stocks,
+          as: "inv_stocks",
+          where: { Item_status: "Available" },
+          attributes: [],
+          required: false,
         },
       ],
       attributes: {
@@ -243,7 +275,14 @@ const get_items = async (req, res, next) => {
       },
       group: ["Inventory_Item.ID"],
       subQuery: false,
+      offset,
+      limit,
     });
+
+    const result = {
+      count: Array.isArray(totalCount) ? totalCount.length : totalCount,
+      rows: rows,
+    };
 
     return res.status(200).json(result);
   } catch (error) {
@@ -256,11 +295,21 @@ const get_items = async (req, res, next) => {
 // @access  Private
 
 const get_stocks = async (req, res, next) => {
-  const { Item_ID } = req.query;
+  const { Item_ID, search, offset, limit } = req.query;
 
   try {
-    const result = await Inventory_Stocks.findAll({
-      where: { Item_ID },
+    const result = await Inventory_Stocks.findAndCountAll({
+      where: {
+        Item_ID,
+        ...(search && {
+          [Op.or]: [
+            { Item_serial: { [Op.iLike]: `%${search}%` } },
+            { Item_branch: { [Op.iLike]: `%${search}%` } },
+          ],
+        }),
+      },
+      offset,
+      limit,
     });
 
     return res.status(200).json(result);

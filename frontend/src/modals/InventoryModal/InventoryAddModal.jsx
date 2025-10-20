@@ -4,7 +4,7 @@ import { handleApiError } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import { decodedUser } from "../../utils/GlobalVariables";
 
-const InventoryAddModal = ({ isOpen, onClose }) => {
+const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
   const [inputFields, setInputFields] = useState({
     Item_name: "",
     Item_category: { ID: "", name: "" },
@@ -69,14 +69,20 @@ const InventoryAddModal = ({ isOpen, onClose }) => {
         };
 
         const res = await axiosPrivate.post("/inventory/create-item", data);
-        console.log(res);
       }
 
       if (radioButton == 2) {
-        if (serialRange.start > serialRange.end) {
+        if (
+          parseInt(serialRange.start) > parseInt(serialRange.end) ||
+          serialRange.start.trim() == "" ||
+          serialRange.end.trim() == ""
+        ) {
           alert("Invalid Range");
           return;
         }
+
+        const startNum = Number(serialRange.start);
+        const endNum = Number(serialRange.end);
 
         const data = {
           item_name: inputFields.Item_name,
@@ -84,20 +90,32 @@ const InventoryAddModal = ({ isOpen, onClose }) => {
           item_subcategory: inputFields.Item_subcategory.name,
           item_classification: inputFields.Item_classification,
           item_origin_branch: user.Branch,
-          serials: [
-            ...Array(
-              Math.max(0, serialRange.end - serialRange.start + 1)
-            ).keys(),
-          ].map((i) => ({
-            Item_serial: serialRange.start + i,
-            Item_branch: null,
-            Item_status: "Available",
-          })),
+          serials: [...Array(Math.max(0, endNum - startNum + 1)).keys()].map(
+            (i) => ({
+              Item_serial: startNum + i,
+              Item_branch: null,
+              Item_status: "Available",
+            })
+          ),
         };
 
         const res = await axiosPrivate.post("/inventory/create-item", data);
       }
 
+      setRadioButton(1);
+      setStocksData({
+        quantity: 0,
+        serial_num: [],
+      });
+      setInputFields({
+        Item_name: "",
+        Item_category: { ID: "", name: "" },
+        Item_subcategory: { ID: "", name: "" },
+        Item_classification: "",
+      });
+
+      trigger();
+      onClose();
       alert("Data is Submitted");
     } catch (error) {
       handleApiError(error);

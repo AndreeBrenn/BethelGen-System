@@ -1,41 +1,53 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { handleApiError } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
+import React_Paginate from "../../utils/React_Paginate";
+import { MdSearch } from "react-icons/md";
+import { FaSearch } from "react-icons/fa";
 
 const ViewItemPropertyModal = ({ ID_data, setView }) => {
   const [serialData, setSerialData] = useState([]);
   const axiosPrivate = usePrivateAxios();
 
+  const [searchText, setSearchText] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+
+  const [currentPage, setCurrentPage] = useState(0);
+  const [itemsPerPage, setItemPerPage] = useState(5);
+  const [itemOffset, setItemOffset] = useState(0);
+  const [count, setCount] = useState(0);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setAppliedSearch(searchText);
+    setItemOffset(0);
+    setCurrentPage(0);
+  };
+
+  const get_stocks = useCallback(async () => {
+    try {
+      const res = await axiosPrivate.get("/inventory/get-stocks", {
+        params: {
+          Item_ID: ID_data.ID,
+          search: appliedSearch,
+          offset: itemOffset,
+          limit: itemsPerPage,
+        },
+      });
+
+      setSerialData(res.data.rows);
+      setCount(res.data.count);
+    } catch (error) {
+      handleApiError(error);
+    }
+  }, [itemsPerPage, itemOffset, appliedSearch]);
+
   useEffect(() => {
-    let isMounted = true;
-    const controller = new AbortController();
-
-    const get_stocks = async () => {
-      try {
-        const res = await axiosPrivate.get("/inventory/get-stocks", {
-          params: {
-            Item_ID: ID_data.ID,
-          },
-        });
-
-        setSerialData(res.data);
-      } catch (error) {
-        handleApiError(error);
-      }
-    };
-
     get_stocks();
-
-    return () => {
-      isMounted = false;
-      controller.abort();
-    };
-  }, []);
-
-  console.log(serialData);
+  }, [get_stocks]);
 
   return (
-    <div className="fixed inset-0 bg-black/40 bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 bg-opacity-50 backdrop-blur-sm">
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
@@ -53,6 +65,39 @@ const ViewItemPropertyModal = ({ ID_data, setView }) => {
           >
             ×
           </button>
+        </div>
+
+        <div className="bg-white rounded-lg p-4 mb-4 ">
+          <form onSubmit={handleSearch} className="relative flex">
+            <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl" />
+            <input
+              type="text"
+              onChange={(e) => setSearchText(e.target.value)}
+              value={searchText}
+              placeholder="Search Item Serial or Branch"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+
+            <button
+              type="submit"
+              className="bg-blue-600 text-white p-3 rounded-r-lg"
+            >
+              <FaSearch />
+            </button>
+
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                setSearchText("");
+                setAppliedSearch("");
+                get_stocks();
+              }}
+              type="button"
+              className="bg-red-600 text-white px-3 rounded-lg ml-3 cursor-pointer"
+            >
+              Clear
+            </button>
+          </form>
         </div>
 
         {/* Content */}
@@ -118,10 +163,16 @@ const ViewItemPropertyModal = ({ ID_data, setView }) => {
         {/* Footer */}
         <div className="px-6 py-4 border-t border-gray-200 flex justify-between items-center bg-gray-50">
           <span className="text-sm text-gray-600">
-            Total:{" "}
-            <span className="font-semibold">{serialData?.length || 0}</span>{" "}
-            items
+            Total: <span className="font-semibold">{count || 0}</span> items
           </span>
+
+          <React_Paginate
+            itemsPerPage={itemsPerPage}
+            count={count}
+            setItemOffset={setItemOffset}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+          />
           <button
             onClick={() => setView(null)}
             className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"

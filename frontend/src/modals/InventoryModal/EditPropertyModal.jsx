@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import { handleApiError } from "../../utils/HandleError";
 
-const EditPropertyModal = ({ data, setEdit }) => {
+const EditPropertyModal = ({ data, setEdit, trigger }) => {
   const [inputFields, setInputFields] = useState({
     Item_name: data.Item_name,
     Item_category: { ID: "", name: data.Item_category },
@@ -49,6 +49,14 @@ const EditPropertyModal = ({ data, setEdit }) => {
       });
 
       alert("Data updated successfully");
+      setEdit(null);
+      trigger();
+      setInputFields({
+        Item_name: data.Item_name,
+        Item_category: { ID: "", name: data.Item_category },
+        Item_subcategory: { ID: "", name: data.Item_subcategory },
+        Item_classification: data.Item_classification,
+      });
     } catch (error) {
       handleApiError(error);
     }

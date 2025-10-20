@@ -1,25 +1,25 @@
 import InventoryAddModal from "../../modals/InventoryModal/InventoryAddModal";
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import DeleteConfirmationModal from "../../modals/reuseable/DeleteConfirmationModal";
 import { useEffect } from "react";
 import { handleApiError } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import moment from "moment";
-import { MdMoreVert, MdRemoveRedEye } from "react-icons/md";
+import { MdMoreVert, MdRemoveRedEye, MdSearch } from "react-icons/md";
 import { FiEdit, FiTrash2, FiPackage } from "react-icons/fi";
 import ViewItemPropertyModal from "../../modals/InventoryModal/ViewItemPropertyModal";
 import EditPropertyModal from "../../modals/InventoryModal/EditPropertyModal";
 import ReplenishPropertyModal from "../../modals/InventoryModal/ReplenishPropertyModal";
+import React_Paginate from "../../utils/React_Paginate";
+import { FaSearch } from "react-icons/fa";
 
 export default function Property() {
-  const [activeTab, setActiveTab] = useState("all-assets");
+  const [activeTab, setActiveTab] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
 
   const axiosPrivate = usePrivateAxios();
 
   const [assets, setAssets] = useState([]);
-  const [documents, setDocuments] = useState([]);
 
   const [actions, setActions] = useState(null);
   const [view, setView] = useState(null);
@@ -29,38 +29,35 @@ export default function Property() {
 
   const menuRef = useRef(null);
 
-  const currentData = activeTab === "all-assets" ? assets : documents;
-  const setCurrentData = activeTab === "all-assets" ? setAssets : setDocuments;
+  const [currentPage, setCurrentPage] = useState(0);
+  const [itemsPerPage, setItemPerPage] = useState(5);
+  const [itemOffset, setItemOffset] = useState(0);
+  const [count, setCount] = useState(0);
 
-  const filteredData = currentData.filter((item) =>
-    Object.values(item).some((val) =>
-      val.toString().toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
+  const [searchText, setSearchText] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
+
+  const get_items = useCallback(async () => {
+    try {
+      const res = await axiosPrivate.get("/inventory/get-items", {
+        params: {
+          search: appliedSearch,
+          offset: itemOffset,
+          limit: itemsPerPage,
+          subcategory: activeTab,
+        },
+      });
+
+      setAssets(res.data.rows);
+      setCount(res.data.count);
+    } catch (error) {
+      handleApiError(error);
+    }
+  }, [itemOffset, itemsPerPage, appliedSearch, activeTab]);
 
   useEffect(() => {
-    let isMounted = true;
-    const controller = new AbortController();
-
-    const get_items = async () => {
-      try {
-        const res = await axiosPrivate.get("/inventory/get-items", {
-          signal: controller.signal,
-        });
-
-        setAssets(res.data);
-      } catch (error) {
-        handleApiError(error);
-      }
-    };
-
     get_items();
-
-    return () => {
-      isMounted = false;
-      controller.abort();
-    };
-  }, []);
+  }, [get_items]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -75,6 +72,13 @@ export default function Property() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [setActions]);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setAppliedSearch(searchText);
+    setItemOffset(0);
+    setCurrentPage(0);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -92,7 +96,7 @@ export default function Property() {
             </div>
             <button
               onClick={() => setIsAddModalOpen(true)}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex cursor-pointer items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
             >
               <span className="text-xl">+</span>
               Add New Item
@@ -106,60 +110,67 @@ export default function Property() {
           <div className="border-b border-gray-200 mb-6">
             <div className="flex gap-6">
               <button
-                onClick={() => setActiveTab("all-assets")}
-                className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "all-assets"
+                onClick={() => setActiveTab(null)}
+                className={`pb-3 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
+                  activeTab === null
                     ? "border-blue-600 text-blue-600"
                     : "border-transparent text-gray-600 hover:text-gray-900"
                 }`}
               >
-                All Assets ({assets.length})
+                All Assets
               </button>
               <button
-                onClick={() => setActiveTab("documents")}
-                className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === "documents"
+                onClick={() => setActiveTab("Documents")}
+                className={`pb-3 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
+                  activeTab === "Documents"
                     ? "border-blue-600 text-blue-600"
                     : "border-transparent text-gray-600 hover:text-gray-900"
                 }`}
               >
-                Documents ({documents.length})
+                Documents
               </button>
             </div>
           </div>
 
           {/* Search Bar */}
-          <div className="mb-6">
-            <div className="relative">
-              <svg
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
+          <div className="bg-white border border-slate-200 rounded-lg p-4 mb-4 shadow-sm">
+            <form onSubmit={handleSearch} className="relative flex">
+              <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl" />
               <input
+                onChange={(e) => setSearchText(e.target.value)}
+                value={searchText}
                 type="text"
-                placeholder="Search items..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Item name"
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
-            </div>
+
+              <button
+                type="submit"
+                className="bg-blue-600 text-white p-3 rounded-r-lg"
+              >
+                <FaSearch />
+              </button>
+
+              <button
+                onClick={() => {
+                  setSearchText("");
+                  setAppliedSearch("");
+                  get_items();
+                }}
+                type="button"
+                className="bg-red-600 text-white px-3 rounded-lg ml-3 cursor-pointer"
+              >
+                Clear
+              </button>
+            </form>
           </div>
 
           {/* Items List or Empty State */}
-          {filteredData.length === 0 ? (
+          {assets.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-6xl text-gray-300 mb-4">📦</div>
               <p className="text-gray-500">
-                {searchTerm
+                {searchText
                   ? "No items found matching your search."
                   : "No items yet. Create your first inventory item."}
               </p>
@@ -293,17 +304,32 @@ export default function Property() {
         </div>
       </div>
 
+      <React_Paginate
+        itemsPerPage={itemsPerPage}
+        count={count}
+        setItemOffset={setItemOffset}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+      />
+
       {/* Modals */}
 
       {view && <ViewItemPropertyModal ID_data={view} setView={setView} />}
-      {edit && <EditPropertyModal data={edit} setEdit={setEdit} />}
+      {edit && (
+        <EditPropertyModal data={edit} setEdit={setEdit} trigger={get_items} />
+      )}
       {replenish && (
-        <ReplenishPropertyModal data={replenish} setReplenish={setReplenish} />
+        <ReplenishPropertyModal
+          data={replenish}
+          setReplenish={setReplenish}
+          trigger={get_items}
+        />
       )}
 
       <InventoryAddModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
+        trigger={get_items}
       />
 
       <DeleteConfirmationModal
@@ -317,6 +343,8 @@ export default function Property() {
             );
 
             alert("Data Deleted!");
+            get_items();
+            setDeleteItem(null);
           } catch (error) {
             handleApiError(error);
           }

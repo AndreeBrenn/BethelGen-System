@@ -3,7 +3,7 @@ import usePrivateAxios from "../../hooks/useProtectedAxios";
 import { handleApiError } from "../../utils/HandleError";
 import uniqid from "uniqid";
 
-const CategoryModal = ({ showModal, setShowModal, setTrigger }) => {
+const CategoryModal = ({ showModal, setShowModal, trigger }) => {
   const [inputFields, setInputFields] = useState(
     showModal.purpose == "EditCategory"
       ? showModal.data.Category_name
@@ -26,7 +26,7 @@ const CategoryModal = ({ showModal, setShowModal, setTrigger }) => {
         Category_name: inputFields,
       });
 
-      setTrigger((prev) => prev + 1);
+      trigger();
       setShowModal({
         purpose: "",
         show: false,
@@ -50,7 +50,7 @@ const CategoryModal = ({ showModal, setShowModal, setTrigger }) => {
         Inv_SubCat_ID: showModal.categoryID,
         Classification: [],
       });
-      setTrigger((prev) => prev + 1);
+      trigger();
       setShowModal({
         purpose: "",
         show: false,
@@ -76,7 +76,7 @@ const CategoryModal = ({ showModal, setShowModal, setTrigger }) => {
         ],
         sub_categoryID: showModal.subcategoryID,
       });
-      setTrigger((prev) => prev + 1);
+      trigger();
       alert("Classification Added!");
       setShowModal({
         purpose: "",
@@ -107,7 +107,7 @@ const CategoryModal = ({ showModal, setShowModal, setTrigger }) => {
         data: [],
         type: "",
       });
-      setTrigger((prev) => prev + 1);
+      trigger();
     } catch (error) {
       handleApiError(error);
     } finally {
@@ -119,9 +119,6 @@ const CategoryModal = ({ showModal, setShowModal, setTrigger }) => {
     e.preventDefault();
     setLoading(true);
 
-    const classification_data = showModal.data.Classification.filter(
-      (fil) => fil.ID != showModal.data.part.ID
-    );
     try {
       if (showModal.purpose == "EditSubcategory") {
         await axiosPrivate.put("/inventory/update-subcategory", {
@@ -133,6 +130,10 @@ const CategoryModal = ({ showModal, setShowModal, setTrigger }) => {
       }
 
       if (showModal.purpose == "EditClassification") {
+        const classification_data = showModal.data.Classification.filter(
+          (fil) => fil.ID != showModal.data.part.ID
+        );
+
         await axiosPrivate.put("/inventory/update-subcategory", {
           Classification: [
             ...classification_data,
@@ -150,7 +151,7 @@ const CategoryModal = ({ showModal, setShowModal, setTrigger }) => {
         data: [],
         type: "",
       });
-      setTrigger((prev) => prev + 1);
+      trigger();
     } catch (error) {
       handleApiError(error);
     } finally {
@@ -159,7 +160,7 @@ const CategoryModal = ({ showModal, setShowModal, setTrigger }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 bg-opacity-50 backdrop-blur-sm">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">
           {showModal.purpose == "create"
