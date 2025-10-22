@@ -17,6 +17,9 @@ const {
   update_item,
   replenish_stock,
   delete_item,
+  create_inventory_request,
+  get_inventory_request_personal,
+  delete_request_inventory,
 } = require("../controller/InventoryController");
 
 router.post("/create-category", protected, create_category);
@@ -36,5 +39,14 @@ router.get("/get-stocks", protected, get_stocks);
 router.put("/update-item", protected, update_item);
 router.post("/replenish-stocks", protected, replenish_stock);
 router.delete("/delete-item/:ID", protected, delete_item);
+
+//INVENTORY REQUEST
+router.post("/create-request", protected, create_inventory_request);
+router.get("/get-personal-request", protected, get_inventory_request_personal);
+router.delete(
+  "/delete-personal-request/:ID",
+  protected,
+  delete_request_inventory
+);
 
 module.exports = router;

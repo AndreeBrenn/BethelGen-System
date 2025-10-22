@@ -3,6 +3,8 @@ const {
   Inventory_Subcategory,
   Inventory_Item,
   Inventory_Stocks,
+  Inventory_Request,
+  Users,
   sequelize,
 } = require("../models");
 const { Op } = require("sequelize");
@@ -376,6 +378,87 @@ const delete_item = async (req, res, next) => {
   }
 };
 
+//#region INVENTORY REQUEST
+
+// @desc    Add Request Inventory
+// @route   POST /inventory/create-request
+// @access  Private
+
+const create_inventory_request = async (req, res, next) => {
+  const inventoryData = req.body;
+
+  try {
+    const result = await Inventory_Request.create(inventoryData);
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    get request by User Only
+// @route   GET /inventory/get-personal-request
+// @access  Private
+
+const get_inventory_request_personal = async (req, res, next) => {
+  const { search, offset, limit, ID } = req.query;
+
+  try {
+    const whereClause = {
+      USER_ID: ID,
+      ...(search && {
+        [Op.or]: {
+          Item_name: { [Op.iLike]: `%${search}%` },
+          Item_branch: { [Op.iLike]: `%${search}%` },
+          "$Item_userID.FirstName$": { [Op.iLike]: `%${search}%` },
+          "$Item_userID.LastName$": { [Op.iLike]: `%${search}%` },
+        },
+      }),
+    };
+
+    const result = await Inventory_Request.findAndCountAll({
+      include: [
+        {
+          model: Users,
+          as: "Item_userID",
+          attributes: ["LastName", "FirstName", "Role", "Email", "Department"],
+        },
+      ],
+      where: whereClause,
+      offset,
+      limit,
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Delete  Personal Request Inventory
+// @route   DELETE /inventory/delete-personal-request/:ID
+// @access  Private
+
+const delete_request_inventory = async (req, res, next) => {
+  const { ID } = req.params;
+
+  try {
+    const request = await Inventory_Request.findByPk(ID);
+
+    if (request.Item_status == "Approved") {
+      return res.status(403).json({ message: "This item cannot be deleted" });
+    }
+
+    const result = await Inventory_Request.destroy({ where: { ID } });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//#endregion
+
 module.exports = {
   create_category,
   get_category,
@@ -392,4 +475,7 @@ module.exports = {
   update_item,
   replenish_stock,
   delete_item,
+  create_inventory_request,
+  get_inventory_request_personal,
+  delete_request_inventory,
 };

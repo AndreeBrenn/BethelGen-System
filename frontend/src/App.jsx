@@ -15,6 +15,7 @@ import Inventory from "./pages/Inventory/Inventory";
 import Property from "./pages/Inventory/Property";
 import InventoryLayout from "./layout/InventoryLayout";
 import Attributes from "./pages/Inventory/Attributes";
+import Inventory_Request from "./pages/Inventory/Inventory_Request";
 
 function App() {
   const { refreshToken, isLoading } = useAuth();
@@ -63,6 +64,9 @@ function App() {
           </Route>
           <Route element={<PrivateRoute route={"InventoryAttributes"} />}>
             <Route path="Attributes" element={<Attributes />} />
+          </Route>
+          <Route element={<PrivateRoute route={"InventoryRequest"} />}>
+            <Route path="Request" element={<Inventory_Request />} />
           </Route>
         </Route>
       </Route>

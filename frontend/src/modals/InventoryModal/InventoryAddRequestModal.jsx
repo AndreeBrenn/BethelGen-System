@@ -1,16 +1,21 @@
-import { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { decodedUser } from "../../utils/GlobalVariables";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import { handleApiError } from "../../utils/HandleError";
 
-const EditPropertyModal = ({ data, setEdit, trigger }) => {
+const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
   const [inputFields, setInputFields] = useState({
-    Item_name: data.Item_name,
-    Item_category: { ID: "", name: data.Item_category },
-    Item_subcategory: { ID: "", name: data.Item_subcategory },
-    Item_classification: data.Item_classification,
+    Item_name: "",
+    Item_category: { ID: "", name: "" },
+    Item_subcategory: { ID: "", name: "" },
+    Item_classification: "",
+    Item_description: "",
+    Item_quantity: 0,
+    Item_status: "Pending",
   });
   const [dropDownData, setDropDownData] = useState([]);
 
+  const user = decodedUser();
   const axiosPrivate = usePrivateAxios();
 
   useEffect(() => {
@@ -37,25 +42,33 @@ const EditPropertyModal = ({ data, setEdit, trigger }) => {
     };
   }, []);
 
-  const save_data = async (e) => {
+  const submit_request = async (e) => {
     e.preventDefault();
 
     try {
-      const res = await axiosPrivate.put("/inventory/update-item", {
+      const submittedData = {
         ...inputFields,
         Item_category: inputFields.Item_category.name,
         Item_subcategory: inputFields.Item_subcategory.name,
-        ID: data.ID,
-      });
+        Item_branch: user.Branch,
+        USER_ID: user.ID,
+      };
+      const res = await axiosPrivate.post(
+        "/inventory/create-request",
+        submittedData
+      );
 
-      alert("Data updated successfully");
-      setEdit(null);
+      alert("Data Submitted");
       trigger();
+      setShowAddRequest(null);
       setInputFields({
-        Item_name: data.Item_name,
-        Item_category: { ID: "", name: data.Item_category },
-        Item_subcategory: { ID: "", name: data.Item_subcategory },
-        Item_classification: data.Item_classification,
+        Item_name: "",
+        Item_category: { ID: "", name: "" },
+        Item_subcategory: { ID: "", name: "" },
+        Item_classification: "",
+        Item_description: "",
+        Item_quantity: 0,
+        Item_status: "Pending",
       });
     } catch (error) {
       handleApiError(error);
@@ -65,14 +78,16 @@ const EditPropertyModal = ({ data, setEdit, trigger }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 bg-opacity-50 backdrop-blur-sm">
       <form
-        onSubmit={save_data}
+        onSubmit={submit_request}
         className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Edit Item</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Add New Request
+          </h2>
           <button
             type="button"
-            onClick={() => setEdit(null)}
+            onClick={() => setShowAddRequest(false)}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
             <svg
@@ -165,8 +180,8 @@ const EditPropertyModal = ({ data, setEdit, trigger }) => {
                 name="category"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option hidden defaultValue={inputFields.Item_subcategory.name}>
-                  {inputFields.Item_subcategory.name}
+                <option hidden defaultValue="">
+                  Select a Subcategory
                 </option>
                 {dropDownData
                   .filter((fil) => fil.ID == inputFields.Item_category.ID)[0]
@@ -203,8 +218,8 @@ const EditPropertyModal = ({ data, setEdit, trigger }) => {
                 name="classification"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option hidden defaultValue={inputFields.Item_classification}>
-                  {inputFields.Item_classification}
+                <option hidden defaultValue="">
+                  Select a Classification
                 </option>
                 {dropDownData
                   .filter((fil) => fil.ID == inputFields.Item_category.ID)[0]
@@ -222,10 +237,47 @@ const EditPropertyModal = ({ data, setEdit, trigger }) => {
             </div>
           </div>
 
+          <div className="md:col-span-2 my-3">
+            <label className="block text-sm font-medium text-gray-700 my-2">
+              Description / Specification<span className="text-red-500">*</span>
+            </label>
+            <textarea
+              onChange={(e) =>
+                setInputFields({
+                  ...inputFields,
+                  Item_description: e.target.value,
+                })
+              }
+              required
+              value={inputFields.Item_description}
+              className="w-full px-3 h-[6rem] py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Description"
+            />
+          </div>
+
+          <div className="md:col-span-2 my-3">
+            <label className="block text-sm font-medium text-gray-700 my-2">
+              Quantity / Amount<span className="text-red-500">*</span>
+            </label>
+            <input
+              onChange={(e) =>
+                setInputFields({
+                  ...inputFields,
+                  Item_quantity: e.target.value,
+                })
+              }
+              required
+              type="number"
+              value={inputFields.Item_quantity}
+              className="w-full px-3  py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Description"
+            />
+          </div>
+
           <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
             <button
               type="button"
-              onClick={() => setEdit(null)}
+              onClick={() => setShowAddRequest(false)}
               className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
             >
               Cancel
@@ -234,7 +286,7 @@ const EditPropertyModal = ({ data, setEdit, trigger }) => {
               type="submit"
               className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
-              Save
+              File Request
             </button>
           </div>
         </div>
@@ -243,4 +295,4 @@ const EditPropertyModal = ({ data, setEdit, trigger }) => {
   );
 };
 
-export default EditPropertyModal;
+export default InventoryAddRequestModal;

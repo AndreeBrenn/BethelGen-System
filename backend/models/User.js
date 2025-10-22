@@ -53,5 +53,12 @@ module.exports = (sequelize, DataTypes) => {
     }
   );
 
+  Users.associate = (models) => {
+    Users.hasMany(models.Inventory_Request, {
+      foreignKey: "USER_ID",
+      as: "Item_userID",
+    });
+  };
+
   return Users;
 };

@@ -2,6 +2,7 @@ import React from "react";
 import { decodedUser } from "../../utils/GlobalVariables";
 import { MdInventory, MdCategory } from "react-icons/md";
 import { NavLink } from "react-router-dom";
+import { IoMdPaper } from "react-icons/io";
 
 const InventorySidebar = () => {
   const decode = decodedUser();
@@ -17,6 +18,12 @@ const InventorySidebar = () => {
       icon: MdCategory,
       path: "/Inventory/Attributes",
       access: "InventoryAttributes",
+    },
+    {
+      title: "Inventory Request",
+      icon: IoMdPaper,
+      path: "Request",
+      access: "InventoryRequest",
     },
   ];
   return (
@@ -39,7 +46,9 @@ const InventorySidebar = () => {
                 }
               >
                 <Icon className="text-2xl mb-1" />
-                <span className="text-xs font-medium">{item.title}</span>
+                <span className="text-xs font-medium text-center">
+                  {item.title}
+                </span>
               </NavLink>
             );
           })}

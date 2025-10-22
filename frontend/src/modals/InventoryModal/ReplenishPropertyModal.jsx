@@ -38,8 +38,8 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
       if (radioButton == 2) {
         if (
           serialRange.start > serialRange.end ||
-          serialRange.start.trim() == "" ||
-          serialRange.end.trim() == ""
+          serialRange.start.toString().trim() == "" ||
+          serialRange.end.toString().trim() == ""
         ) {
           alert("Invalid Range");
           return;
@@ -80,12 +80,16 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 bg-opacity-50 backdrop-blur-sm">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <form
+        onSubmit={replenish_data}
+        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">
             Replenish {data.Item_name}
           </h2>
           <button
+            type="button"
             onClick={() => setReplenish(null)}
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
@@ -145,6 +149,7 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
                   Quantity
                 </span>
                 <input
+                  required
                   onChange={(e) =>
                     setStocksData({ ...stocksData, quantity: e.target.value })
                   }
@@ -156,6 +161,7 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
                   Serial Numbers (comma separated)
                 </span>
                 <textarea
+                  required
                   onChange={(e) =>
                     setStocksData({
                       ...stocksData,
@@ -180,6 +186,7 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
                     Serial Start
                   </span>
                   <input
+                    required
                     type="number"
                     onChange={(e) => {
                       setSerialRange({ ...serialRange, start: e.target.value });
@@ -193,6 +200,7 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
                     Serial End
                   </span>
                   <input
+                    required
                     type="number"
                     onChange={(e) => {
                       setSerialRange({ ...serialRange, end: e.target.value });
@@ -220,6 +228,7 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
                   </span>
                   <div class="relative">
                     <input
+                      required
                       type="file"
                       id="fileInput"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
@@ -234,18 +243,22 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
             ) : null}
           </div>
           <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
-            <button className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors">
+            <button
+              type="button"
+              onClick={() => setReplenish(null)}
+              className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
+            >
               Cancel
             </button>
             <button
-              onClick={(e) => replenish_data(e)}
+              type="submit"
               className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
               Submit
             </button>
           </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 };

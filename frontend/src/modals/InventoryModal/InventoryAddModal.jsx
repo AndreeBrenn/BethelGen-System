@@ -126,7 +126,10 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 bg-opacity-50 backdrop-blur-sm">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <form
+        onSubmit={submit_data}
+        className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+      >
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Add New Item</h2>
           <button
@@ -183,10 +186,11 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
                   })
                 }
                 value={inputFields.Item_category.name}
+                required
                 name="category"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option hidden defaultValue="">
+                <option hidden value="">
                   Select a category
                 </option>
                 {dropDownData.map((data) => (
@@ -219,11 +223,12 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
                     Item_classification: "",
                   })
                 }
+                required
                 value={inputFields.Item_subcategory.name}
                 name="category"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option hidden defaultValue="">
+                <option hidden value="">
                   Select a Subcategory
                 </option>
                 {dropDownData
@@ -257,11 +262,12 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
                     Item_classification: e.target.value,
                   })
                 }
+                required
                 value={inputFields.Item_classification}
                 name="classification"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option hidden defaultValue="">
+                <option hidden value="">
                   Select a Classification
                 </option>
                 {dropDownData
@@ -321,6 +327,7 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
                   onChange={(e) =>
                     setStocksData({ ...stocksData, quantity: e.target.value })
                   }
+                  required
                   value={stocksData.quantity}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -341,6 +348,7 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
                       }),
                     })
                   }
+                  required
                   placeholder="e.g., ABC-123, DEF-456, GHI-789"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -356,6 +364,7 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
                     onChange={(e) => {
                       setSerialRange({ ...serialRange, start: e.target.value });
                     }}
+                    required
                     value={serialRange.start}
                     className="w-[95%] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -369,6 +378,7 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
                     onChange={(e) => {
                       setSerialRange({ ...serialRange, end: e.target.value });
                     }}
+                    required
                     value={serialRange.end}
                     className="w-[95%] px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -392,6 +402,7 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
                   </span>
                   <div class="relative">
                     <input
+                      required
                       type="file"
                       id="fileInput"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
@@ -407,20 +418,21 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
           </div>
           <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
             <button
+              type="button"
               onClick={onClose}
               className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
             >
               Cancel
             </button>
             <button
-              onClick={(e) => submit_data(e)}
+              type="submit"
               className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
               Add Item
             </button>
           </div>
         </div>
-      </div>
+      </form>
     </div>
   );
 };
