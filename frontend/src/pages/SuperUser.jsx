@@ -17,6 +17,7 @@ const SuperUser = () => {
     Department: "IT",
     ConfirmPassword: "",
     Branch: "HeadOffice",
+    Position: "Administrator",
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();

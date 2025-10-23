@@ -14,6 +14,7 @@ const CreateUserModal = ({ setShowCreateModal, setUsers }) => {
     Department: "",
     Access: [],
     Branch: "",
+    Position: "",
   });
   const [loading, setLoading] = useState(false);
   const axiosPrivate = usePrivateAxios();
@@ -233,6 +234,22 @@ const CreateUserModal = ({ setShowCreateModal, setUsers }) => {
                     <option value="sales">Sales & Marketing</option>
                     <option value="finance">Finance</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Position <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    onChange={(e) =>
+                      setInputFields({
+                        ...inputFields,
+                        Position: e.target.value,
+                      })
+                    }
+                    value={inputFields.Position}
+                    required
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">

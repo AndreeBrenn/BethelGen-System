@@ -20,6 +20,7 @@ const {
   create_inventory_request,
   get_inventory_request_personal,
   delete_request_inventory,
+  get_all_request,
 } = require("../controller/InventoryController");
 
 router.post("/create-category", protected, create_category);
@@ -48,5 +49,6 @@ router.delete(
   protected,
   delete_request_inventory
 );
+router.get("/get-all-request", protected, get_all_request);
 
 module.exports = router;

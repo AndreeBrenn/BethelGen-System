@@ -42,6 +42,10 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.ARRAY(DataTypes.STRING),
         allowNull: false,
       },
+      Position: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
       Department: {
         type: DataTypes.STRING,
         allowNull: false,

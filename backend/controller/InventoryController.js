@@ -457,6 +457,45 @@ const delete_request_inventory = async (req, res, next) => {
   }
 };
 
+const get_all_request = async (req, res, next) => {
+  const { search, offset, limit } = req.query;
+
+  try {
+    const result = await Inventory_Request.findAndCountAll({
+      include: [
+        {
+          model: Users,
+          as: "Item_userID",
+          attributes: ["LastName", "FirstName", "Role", "Email", "Department"],
+        },
+        {
+          model: Inventory_Stocks,
+          as: "Inv_request",
+        },
+      ],
+      where: {
+        ...(search && {
+          [Op.or]: [
+            // Changed from object to array
+            { Item_name: { [Op.iLike]: `%${search}%` } },
+            { Item_branch: { [Op.iLike]: `%${search}%` } },
+            { "$Item_userID.FirstName$": { [Op.iLike]: `%${search}%` } },
+            { "$Item_userID.LastName$": { [Op.iLike]: `%${search}%` } },
+          ],
+        }),
+      },
+      subQuery: false,
+      distinct: true,
+      limit,
+      offset,
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 //#endregion
 
 module.exports = {
@@ -478,4 +517,5 @@ module.exports = {
   create_inventory_request,
   get_inventory_request_personal,
   delete_request_inventory,
+  get_all_request,
 };

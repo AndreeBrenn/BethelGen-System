@@ -12,4 +12,13 @@ export const permissionGroups = [
     name: "Settings",
     children: ["Admin Settings"],
   },
+  {
+    name: "Inventory",
+    children: [
+      "Procurement",
+      "InventoryRequest",
+      "InventoryAttributes",
+      "Property",
+    ],
+  },
 ];

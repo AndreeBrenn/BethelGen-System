@@ -26,6 +26,12 @@ module.exports = (sequelize, Datatypes) => {
       targetKey: "ID",
       as: "inv_stocks",
     });
+
+    Inventory_Stocks.belongsTo(models.Inventory_Request, {
+      foreignKey: "Inv_requestID",
+      targetKey: "ID",
+      as: "Inv_request",
+    });
   };
 
   return Inventory_Stocks;

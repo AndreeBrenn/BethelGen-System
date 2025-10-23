@@ -41,12 +41,21 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    Item_amount: {
+      type: DataTypes.DECIMAL,
+      allowNull: true,
+    },
   });
 
   Inventory_Request.associate = (models) => {
     Inventory_Request.belongsTo(models.Users, {
       foreignKey: "USER_ID",
       as: "Item_userID",
+    });
+
+    Inventory_Request.hasMany(models.Inventory_Stocks, {
+      foreignKey: "Inv_requestID",
+      as: "Inv_request",
     });
   };
 
