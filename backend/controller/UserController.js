@@ -228,6 +228,35 @@ const logout_user = async (req, res) => {
 };
 //#endregion
 
+//#region GET USERS
+
+// @desc    Logout user
+// @route   GET /users/logout
+// @access  Private
+
+const get_all_users = async (req, res, next) => {
+  try {
+    const result = await Users.findAll({
+      attributes: [
+        "ID",
+        "LastName",
+        "FirstName",
+        "Email",
+        "Role",
+        "Branch",
+        "Position",
+        "Department",
+      ],
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+//#endregion
+
 module.exports = {
   createSuperUser,
   createUser,
@@ -237,4 +266,5 @@ module.exports = {
   detect_Superuser,
   getAllUsers,
   updateUser,
+  get_all_users,
 };

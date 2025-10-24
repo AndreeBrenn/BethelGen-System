@@ -230,7 +230,10 @@ const Procurement = () => {
       />
 
       {showManageModal && (
-        <InventoryManageRequestModal data={showManageModal} />
+        <InventoryManageRequestModal
+          requestData={showManageModal}
+          onClose={() => setShowManageModal(null)}
+        />
       )}
     </div>
   );

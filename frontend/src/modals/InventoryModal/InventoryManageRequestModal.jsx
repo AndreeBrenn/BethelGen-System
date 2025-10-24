@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   FaTimes,
   FaCheck,
@@ -10,6 +10,11 @@ import {
   FaClock,
   FaTimesCircle,
 } from "react-icons/fa";
+import moment from "moment";
+import { GiPayMoney } from "react-icons/gi";
+import { handleApiError } from "../../utils/HandleError";
+import usePrivateAxios from "../../hooks/useProtectedAxios";
+import { decodedUser } from "../../utils/GlobalVariables";
 
 const InventoryManageRequestModal = ({
   requestData,
@@ -18,71 +23,168 @@ const InventoryManageRequestModal = ({
   onReturn,
   onReject,
 }) => {
-  const [selectedSignatory1, setSelectedSignatory1] = useState("");
-  const [selectedSignatory2, setSelectedSignatory2] = useState("");
-  const [selectedSignatory3, setSelectedSignatory3] = useState("");
+  const [amount, setAmount] = useState(0);
+
   const [uploadedImage, setUploadedImage] = useState(null);
+  const [signatories, setSignatories] = useState([]);
   const [notes, setNotes] = useState("");
 
-  // Sample signatories data
-  const signatories = [
-    { id: 1, name: "John Doe", role: "Department Head" },
-    { id: 2, name: "Jane Smith", role: "Finance Manager" },
-    { id: 3, name: "Mike Johnson", role: "General Manager" },
-    { id: 4, name: "Sarah Williams", role: "CEO" },
-  ];
+  const [signatoriesSelected, setSignatoriesSelected] = useState([]);
 
-  // Sample timeline/tracker data
-  const timeline = [
-    {
-      status: "Submitted",
-      date: "2025-10-20 10:30 AM",
-      user: "John Doe",
-      completed: true,
-    },
-    {
-      status: "Reviewed by Dept Head",
-      date: "2025-10-21 02:15 PM",
-      user: "Jane Smith",
-      completed: true,
-    },
-    {
-      status: "Pending Finance Approval",
-      date: "",
-      user: "Mike Johnson",
-      completed: false,
-    },
-    {
-      status: "Final Approval",
-      date: "",
-      user: "Sarah Williams",
-      completed: false,
-    },
-  ];
+  const axiosPrivate = usePrivateAxios();
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setUploadedImage(reader.result);
+  const user = decodedUser();
+
+  const allowedButtons = () => {
+    console.log("=== DEBUGGING allowedButtons ===");
+    console.log("1. Item_signatories:", requestData.Item_signatories);
+    console.log("2. Current user:", user);
+
+    // If signatories is null or empty, check if user is the first approver
+    if (
+      !requestData.Item_signatories ||
+      requestData.Item_signatories.length === 0
+    ) {
+      console.log("3. Signatories is null/empty");
+
+      // Check if current user has the appropriate role to be first approver
+      // Assuming Role 4 (Franklin) should approve first
+      // Adjust this condition based on your workflow
+      if (user.Role === 4) {
+        console.log("4. User is Role 4 (first approver) - RETURNING TRUE");
+        return true;
+      }
+
+      console.log("5. User is not the first approver - RETURNING FALSE");
+      return false;
+    }
+
+    // Find current user in signatories
+    const currentUserSignatory = requestData.Item_signatories.find(
+      (sig) => sig.ID === user.ID
+    );
+
+    console.log("6. Current user signatory found:", currentUserSignatory);
+
+    if (!currentUserSignatory) {
+      console.log("7. User not in signatories - RETURNING FALSE");
+      return false;
+    }
+
+    if (currentUserSignatory.Status === "Approved") {
+      console.log("8. User already approved - RETURNING FALSE");
+      return false;
+    }
+
+    // Sort by Role ascending (lower numbers first: 2, 3, 4, 5)
+    const sortedSignatories = [...requestData.Item_signatories].sort(
+      (a, b) => Number(a.Role) - Number(b.Role)
+    );
+
+    console.log(
+      "9. Sorted signatories:",
+      sortedSignatories.map((s) => ({
+        Name: s.Name,
+        Role: s.Role,
+        Status: s.Status,
+      }))
+    );
+
+    const currentUserIndex = sortedSignatories.findIndex(
+      (sig) => sig.ID === user.ID
+    );
+
+    console.log("10. Current user index:", currentUserIndex);
+
+    // Check if all lower-role signatories have approved
+    for (let i = 0; i < currentUserIndex; i++) {
+      console.log(
+        `11. Checking index ${i}: ${sortedSignatories[i].Name} (Role ${sortedSignatories[i].Role}) - Status: ${sortedSignatories[i].Status}`
+      );
+
+      if (sortedSignatories[i].Status !== "Approved") {
+        console.log(
+          `12. ${sortedSignatories[i].Name} hasn't approved - RETURNING FALSE`
+        );
+        return false;
+      }
+    }
+
+    console.log("13. ALL CHECKS PASSED - RETURNING TRUE");
+    return true;
+  };
+
+  const update_request = async (e) => {
+    e.preventDefault();
+    try {
+      if (!requestData.Item_signatories) {
+        const data = {
+          ID: requestData.ID,
+          Item_signatories: [
+            ...signatoriesSelected,
+            {
+              Name: user.FirstName + " " + user.LastName,
+
+              ID: user.ID,
+              Role: user.Role,
+              Position: user.Position,
+              Status: "Approved",
+              Date: moment(),
+              note: notes,
+              Order: 0,
+            },
+          ],
+          Item_amount: amount,
+        };
+
+        const res = await axiosPrivate.put("/inventory/update-request", data);
+        alert("Data Updated");
+        return;
+      }
+
+      const newSignatory = requestData.Item_signatories.filter(
+        (fil) => fil.ID != user.ID
+      )[0];
+
+      const data = {
+        ID: requestData.ID,
+        Item_signatories: [
+          ...newSignatory,
+          {
+            Name: user.FirstName + " " + user.LastName,
+
+            ID: user.ID,
+            Role: user.Role,
+            Position: user.Position,
+            Status: "Approved",
+            Date: moment(),
+            note: notes,
+            Order: newSignatory.Order,
+          },
+        ],
       };
-      reader.readAsDataURL(file);
+
+      const res = await axiosPrivate.put("/inventory/update-request", data);
+
+      alert("Data Updated!");
+    } catch (error) {
+      console.log(error);
+      handleApiError(error);
     }
   };
 
-  const handleApprove = () => {
-    const data = {
-      signatory1: selectedSignatory1,
-      signatory2: selectedSignatory2,
-      signatory3: selectedSignatory3,
-      image: uploadedImage,
-      notes: notes,
-      action: "approved",
-    };
-    console.log("Approve:", data);
-    onApprove && onApprove(data);
-  };
+  // const handleApprove = () => {
+  //   const data = {
+  //     signatory1: selectedSignatory1,
+  //     signatory2: selectedSignatory2,
+  //     signatory3: selectedSignatory3,
+  //     image: uploadedImage,
+  //     notes: notes,
+  //     action: "approved",
+  //   };
+  //   console.log("Approve:", data);
+  //   onApprove && onApprove(data);
+  // };
 
   const handleReturn = () => {
     const data = {
@@ -101,6 +203,20 @@ const InventoryManageRequestModal = ({
     console.log("Reject:", data);
     onReject && onReject(data);
   };
+
+  const get_all_users = useCallback(async () => {
+    try {
+      const res = await axiosPrivate.get("/users/get-all-users");
+
+      setSignatories(res.data);
+    } catch (error) {
+      handleApiError(error);
+    }
+  }, []);
+
+  useEffect(() => {
+    get_all_users();
+  }, []);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -129,153 +245,263 @@ const InventoryManageRequestModal = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600">Request #</p>
-                    <p className="font-semibold">
-                      {requestData?.ID || "REQ-001"}
-                    </p>
+                    <p className="font-semibold">{requestData?.ID}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Status</p>
                     <span className="inline-block px-3 py-1 text-sm font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                      {requestData?.Item_status || "Pending"}
+                      {requestData?.Item_status}
                     </span>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Item Name</p>
-                    <p className="font-semibold">
-                      {requestData?.Item_name || "Office Desk"}
-                    </p>
+                    <p className="font-semibold">{requestData?.Item_name}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Quantity</p>
                     <p className="font-semibold">
-                      {requestData?.Item_quantity || "5"}
+                      {requestData?.Item_quantity}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Requester</p>
                     <p className="font-semibold">
-                      {requestData?.Item_userID
-                        ? `${requestData.Item_userID.FirstName} ${requestData.Item_userID.LastName}`
-                        : "John Doe"}
+                      {`${requestData.Item_userID.FirstName} ${requestData.Item_userID.LastName}`}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Department</p>
                     <p className="font-semibold">
-                      {requestData?.Item_userID?.Department || "IT Department"}
+                      {requestData?.Item_userID?.Department}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Category</p>
+                    <p className="font-semibold">
+                      {requestData?.Item_category}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Subcategory</p>
+                    <p className="font-semibold">
+                      {requestData?.Item_subcategory}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-sm text-gray-600 ">Description</p>
+                    <p className="font-semibold">
+                      {requestData?.Item_description}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Assign Signatories */}
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <FaUser className="text-blue-600" />
-                  Assign Signatories
-                </h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      First Signatory
-                    </label>
-                    <select
-                      value={selectedSignatory1}
-                      onChange={(e) => setSelectedSignatory1(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">Select signatory</option>
-                      {signatories.map((sig) => (
-                        <option key={sig.id} value={sig.id}>
-                          {sig.name} - {sig.role}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+              {!requestData.Item_amount && (
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <GiPayMoney className="text-blue-600" />
+                    Amount
+                  </h3>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Second Signatory
-                    </label>
-                    <select
-                      value={selectedSignatory2}
-                      onChange={(e) => setSelectedSignatory2(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">Select signatory</option>
-                      {signatories.map((sig) => (
-                        <option key={sig.id} value={sig.id}>
-                          {sig.name} - {sig.role}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Third Signatory (Optional)
-                    </label>
-                    <select
-                      value={selectedSignatory3}
-                      onChange={(e) => setSelectedSignatory3(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">Select signatory</option>
-                      {signatories.map((sig) => (
-                        <option key={sig.id} value={sig.id}>
-                          {sig.name} - {sig.role}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Upload Image */}
-              <div className="bg-white border border-gray-200 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <FaUpload className="text-blue-600" />
-                  Upload Supporting Document
-                </h3>
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
-                    <input
-                      type="file"
-                      id="file-upload"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                    <label
-                      htmlFor="file-upload"
-                      className="cursor-pointer flex flex-col items-center"
-                    >
-                      <FaUpload className="text-4xl text-gray-400 mb-2" />
-                      <p className="text-sm text-gray-600">
-                        Click to upload or drag and drop
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        PNG, JPG up to 10MB
-                      </p>
-                    </label>
-                  </div>
-                  {uploadedImage && (
-                    <div className="relative">
-                      <img
-                        src={uploadedImage}
-                        alt="Uploaded"
-                        className="w-full h-48 object-cover rounded-lg"
+                  <div className="space-y-4">
+                    <div>
+                      <input
+                        type="number"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       />
-                      <button
-                        onClick={() => setUploadedImage(null)}
-                        className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600"
-                      >
-                        <FaTimes />
-                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
+              {/* Assign Signatories */}
+              {!requestData.Item_signatories && (
+                <>
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <FaUser className="text-blue-600" />
+                      Assign Signatories
+                    </h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          First Signatory
+                        </label>
+                        <select
+                          onChange={(e) =>
+                            setSignatoriesSelected((prev) => [
+                              ...prev,
+                              {
+                                Name:
+                                  e.target.selectedOptions[0].dataset
+                                    .firstname +
+                                  " " +
+                                  e.target.selectedOptions[0].dataset.lastname,
+                                ID: e.target.value,
+                                Role: e.target.selectedOptions[0].dataset.role,
+                                Position:
+                                  e.target.selectedOptions[0].dataset.position,
+                                Order: 1,
+                                Status: "Pending",
+                                Date: null,
+                              },
+                            ])
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="">Select signatory</option>
+                          {signatories.map((sig) => (
+                            <option
+                              key={sig.ID}
+                              value={sig.ID}
+                              data-firstname={sig.FirstName}
+                              data-lastname={sig.LastName}
+                              data-role={sig.Role}
+                              data-position={sig.Position}
+                            >
+                              {sig.FirstName + " " + sig.LastName} -{" "}
+                              {sig.Position}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Second Signatory
+                        </label>
+                        <select
+                          onChange={(e) =>
+                            setSignatoriesSelected((prev) => [
+                              ...prev,
+                              {
+                                Name:
+                                  e.target.selectedOptions[0].dataset
+                                    .firstname +
+                                  " " +
+                                  e.target.selectedOptions[0].dataset.lastname,
+                                ID: e.target.value,
+                                Role: e.target.selectedOptions[0].dataset.role,
+                                Position:
+                                  e.target.selectedOptions[0].dataset.position,
+                                Order: 1,
+                                Status: "Pending",
+                                Date: null,
+                              },
+                            ])
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="">Select signatory</option>
+                          {signatories.map((sig) => (
+                            <option
+                              key={sig.ID}
+                              value={sig.ID}
+                              data-firstname={sig.FirstName}
+                              data-lastname={sig.LastName}
+                              data-role={sig.Role}
+                              data-position={sig.Position}
+                            >
+                              {sig.FirstName + " " + sig.LastName} -{" "}
+                              {sig.Position}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Third Signatory (Optional)
+                        </label>
+                        <select
+                          onChange={(e) =>
+                            setSignatoriesSelected((prev) => [
+                              ...prev,
+                              {
+                                Name:
+                                  e.target.selectedOptions[0].dataset
+                                    .firstname +
+                                  " " +
+                                  e.target.selectedOptions[0].dataset.lastname,
+                                ID: e.target.value,
+                                Role: e.target.selectedOptions[0].dataset.role,
+                                Position:
+                                  e.target.selectedOptions[0].dataset.position,
+                                Order: 1,
+                                Status: "Pending",
+                                Date: null,
+                              },
+                            ])
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="">Select signatory</option>
+                          {signatories.map((sig) => (
+                            <option
+                              key={sig.ID}
+                              value={sig.ID}
+                              data-firstname={sig.FirstName}
+                              data-lastname={sig.LastName}
+                              data-role={sig.Role}
+                              data-position={sig.Position}
+                            >
+                              {sig.FirstName + " " + sig.LastName} -{" "}
+                              {sig.Position}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Upload Image */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <FaUpload className="text-blue-600" />
+                      Upload Supporting Document
+                    </h3>
+                    <div className="space-y-4">
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                        <input
+                          type="file"
+                          id="file-upload"
+                          accept="image/*"
+                          //  onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                        <label
+                          htmlFor="file-upload"
+                          className="cursor-pointer flex flex-col items-center"
+                        >
+                          <FaUpload className="text-4xl text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-600">
+                            Click to upload or drag and drop
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            PNG, JPG up to 10MB
+                          </p>
+                        </label>
+                      </div>
+                      {uploadedImage && (
+                        <div className="relative">
+                          <img
+                            src={uploadedImage}
+                            alt="Uploaded"
+                            className="w-full h-48 object-cover rounded-lg"
+                          />
+                          <button
+                            onClick={() => setUploadedImage(null)}
+                            className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600"
+                          >
+                            <FaTimes />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Notes */}
               <div className="bg-white border border-gray-200 rounded-lg p-4">
@@ -299,36 +525,80 @@ const InventoryManageRequestModal = ({
                   Request Tracker
                 </h3>
                 <div className="space-y-4">
-                  {timeline.map((item, index) => (
-                    <div key={index} className="flex gap-3">
+                  <div className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center 
+                       
+                            bg-green-500 text-white
+                        
+                          `}
+                      >
+                        <FaCheckCircle />
+                      </div>
+                      {
+                        <div
+                          className={`w-0.5 h-16
+                              bg-green-500
+                            `}
+                        />
+                      }
+                    </div>
+                    <div className="flex-1 pb-8">
+                      <p className="font-semibold text-gray-900">Submitted</p>
+                      <p className="text-sm text-gray-600">
+                        {requestData.Item_userID.FirstName +
+                          " " +
+                          requestData.Item_userID.LastName}
+                      </p>
+
+                      <p className="text-xs text-gray-500 mt-1">
+                        {moment(requestData.createdAt).format(
+                          "YYYY-MM-DD hh:mm A"
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  {requestData.Item_signatories?.sort(
+                    (a, b) => a?.Order - b?.Order
+                  ).map((item, index) => (
+                    <div key={item.ID} className="flex gap-3">
                       <div className="flex flex-col items-center">
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            item.completed
+                            item.Status == "Approved"
                               ? "bg-green-500 text-white"
                               : "bg-gray-300 text-gray-600"
                           }`}
                         >
-                          {item.completed ? <FaCheckCircle /> : <FaClock />}
+                          {item.Status == "Approved" ? (
+                            <FaCheckCircle />
+                          ) : (
+                            <FaClock />
+                          )}
                         </div>
-                        {index < timeline.length - 1 && (
-                          <div
-                            className={`w-0.5 h-16 ${
-                              item.completed ? "bg-green-500" : "bg-gray-300"
-                            }`}
-                          />
-                        )}
+
+                        <div
+                          className={`w-0.5 h-16 ${
+                            item.Status == "Approved"
+                              ? "bg-green-500"
+                              : "bg-gray-300"
+                          }`}
+                        />
                       </div>
                       <div className="flex-1 pb-8">
                         <p className="font-semibold text-gray-900">
-                          {item.status}
+                          {item.Status}
                         </p>
-                        <p className="text-sm text-gray-600">{item.user}</p>
-                        {item.date && (
+                        <p className="text-sm text-gray-600">{item.Name}</p>
+                        {item.Date && (
                           <p className="text-xs text-gray-500 mt-1">
-                            {item.date}
+                            {moment(item.Date).format("YYYY-MM-DD hh:mm A")}
                           </p>
                         )}
+                        <p className="text-xs text-gray-500 mt-1">
+                          {item.note}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -347,27 +617,31 @@ const InventoryManageRequestModal = ({
             >
               Cancel
             </button>
-            <button
-              onClick={handleReject}
-              className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
-            >
-              <FaBan />
-              Reject
-            </button>
-            <button
-              onClick={handleReturn}
-              className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium flex items-center gap-2"
-            >
-              <FaUndo />
-              Return
-            </button>
-            <button
-              onClick={handleApprove}
-              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2"
-            >
-              <FaCheck />
-              Approve
-            </button>
+            {allowedButtons() && (
+              <>
+                <button
+                  onClick={handleReject}
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
+                >
+                  <FaBan />
+                  Reject
+                </button>
+                <button
+                  onClick={handleReturn}
+                  className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium flex items-center gap-2"
+                >
+                  <FaUndo />
+                  Return
+                </button>
+                <button
+                  onClick={(e) => update_request(e)}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2"
+                >
+                  <FaCheck />
+                  Approve
+                </button>{" "}
+              </>
+            )}
           </div>
         </div>
       </div>

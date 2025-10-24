@@ -220,6 +220,28 @@ const create_Inventory_item = async (req, res, next) => {
   }
 };
 
+// @desc    Get Documents Item
+// @route   GET /inventory/get-documents
+// @access  Private
+
+const get_documents = async (req, res, next) => {
+  const { classification } = req.query;
+
+  try {
+    const result = await Inventory_Item.findAll({
+      where: {
+        Item_category: "Fixed Assets",
+        Item_subcategory: "Documents",
+        Item_classification: classification,
+      },
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Get Item
 // @route   GET /inventory/get-item
 // @access  Private
@@ -457,6 +479,10 @@ const delete_request_inventory = async (req, res, next) => {
   }
 };
 
+// @desc    Get All  Request Inventory
+// @route   GET /inventory/get-all-request
+// @access  Private
+
 const get_all_request = async (req, res, next) => {
   const { search, offset, limit } = req.query;
 
@@ -496,6 +522,28 @@ const get_all_request = async (req, res, next) => {
   }
 };
 
+// @desc    Update request based on approving of the user
+// @route   PUT /inventory/update-request
+// @access  Private
+
+const update_request = async (req, res, next) => {
+  const requestData = req.body;
+
+  console.log(requestData);
+  try {
+    const result = await Inventory_Request.update(
+      { ...requestData },
+      {
+        where: { ID: requestData.ID },
+      }
+    );
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 //#endregion
 
 module.exports = {
@@ -509,6 +557,7 @@ module.exports = {
   delete_subcategory,
   create_Inventory_item,
   get_all_category,
+  get_documents,
   get_items,
   get_stocks,
   update_item,
@@ -518,4 +567,5 @@ module.exports = {
   get_inventory_request_personal,
   delete_request_inventory,
   get_all_request,
+  update_request,
 };

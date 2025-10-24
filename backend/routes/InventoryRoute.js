@@ -21,6 +21,8 @@ const {
   get_inventory_request_personal,
   delete_request_inventory,
   get_all_request,
+  update_request,
+  get_documents,
 } = require("../controller/InventoryController");
 
 router.post("/create-category", protected, create_category);
@@ -37,6 +39,7 @@ router.delete("/delete-subcategory/:ID", protected, delete_subcategory);
 router.post("/create-item", protected, create_Inventory_item);
 router.get("/get-items", protected, get_items);
 router.get("/get-stocks", protected, get_stocks);
+router.get("/get-documents", protected, get_documents);
 router.put("/update-item", protected, update_item);
 router.post("/replenish-stocks", protected, replenish_stock);
 router.delete("/delete-item/:ID", protected, delete_item);
@@ -50,5 +53,6 @@ router.delete(
   delete_request_inventory
 );
 router.get("/get-all-request", protected, get_all_request);
+router.put("/update-request", protected, update_request);
 
 module.exports = router;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { decodedUser } from "../../utils/GlobalVariables";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import { handleApiError } from "../../utils/HandleError";
@@ -14,6 +14,7 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
     Item_status: "Pending",
   });
   const [dropDownData, setDropDownData] = useState([]);
+  const [dropDownDocuments, setDropDownDocuments] = useState([]);
 
   const user = decodedUser();
   const axiosPrivate = usePrivateAxios();
@@ -41,6 +42,24 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
       controller.abort();
     };
   }, []);
+
+  const get_documents = useCallback(async () => {
+    try {
+      const res = await axiosPrivate.get("/inventory/get-documents", {
+        params: {
+          classification: inputFields.Item_classification,
+        },
+      });
+
+      setDropDownDocuments(res.data);
+    } catch (error) {
+      handleApiError;
+    }
+  }, [inputFields.Item_classification]);
+
+  useEffect(() => {
+    get_documents();
+  }, [get_documents]);
 
   const submit_request = async (e) => {
     e.preventDefault();
@@ -108,21 +127,6 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
 
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Item Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                onChange={(e) =>
-                  setInputFields({ ...inputFields, Item_name: e.target.value })
-                }
-                required
-                value={inputFields.Item_name}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter item name"
-              />
-            </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Category <span className="text-red-500">*</span>
@@ -235,6 +239,55 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
                   ))}
               </select>
             </div>
+          </div>
+
+          <div className="md:col-span-2 my-2">
+            {inputFields.Item_category.name == "Fixed Assets" &&
+            inputFields.Item_subcategory.name == "Documents" ? (
+              <>
+                {" "}
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Item Name <span className="text-red-500">*</span>
+                </label>
+                <select
+                  onChange={(e) =>
+                    setInputFields({
+                      ...inputFields,
+                      Item_name: e.target.value,
+                    })
+                  }
+                  required
+                  value={inputFields.Item_name}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter item name"
+                >
+                  <option value="">Select an Item</option>
+                  {dropDownDocuments.map((data) => (
+                    <>
+                      <option value={data.Item_name}>{data.Item_name}</option>
+                    </>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Item Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  onChange={(e) =>
+                    setInputFields({
+                      ...inputFields,
+                      Item_name: e.target.value,
+                    })
+                  }
+                  required
+                  value={inputFields.Item_name}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter item name"
+                />
+              </>
+            )}
           </div>
 
           <div className="md:col-span-2 my-3">
