@@ -23,6 +23,7 @@ const {
   get_all_request,
   update_request,
   get_documents,
+  get_filtered_items,
 } = require("../controller/InventoryController");
 
 router.post("/create-category", protected, create_category);
@@ -43,6 +44,7 @@ router.get("/get-documents", protected, get_documents);
 router.put("/update-item", protected, update_item);
 router.post("/replenish-stocks", protected, replenish_stock);
 router.delete("/delete-item/:ID", protected, delete_item);
+router.get("/get-filtered-items", protected, get_filtered_items);
 
 //INVENTORY REQUEST
 router.post("/create-request", protected, create_inventory_request);

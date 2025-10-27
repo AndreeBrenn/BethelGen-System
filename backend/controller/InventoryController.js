@@ -220,6 +220,28 @@ const create_Inventory_item = async (req, res, next) => {
   }
 };
 
+// @desc    Get Filtered Items for Dropdown Assign
+// @route   GET /inventory/get-filtered-items
+// @access  Private
+
+const get_filtered_items = async (req, res, next) => {
+  const { Item_category, Item_subcategory, Item_classification } = req.query;
+
+  try {
+    const result = await Inventory_Item.findAll({
+      where: {
+        Item_category,
+        Item_classification,
+        Item_subcategory,
+      },
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Get Documents Item
 // @route   GET /inventory/get-documents
 // @access  Private
@@ -568,4 +590,5 @@ module.exports = {
   delete_request_inventory,
   get_all_request,
   update_request,
+  get_filtered_items,
 };

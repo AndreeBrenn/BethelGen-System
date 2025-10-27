@@ -15,6 +15,7 @@ import { GiPayMoney } from "react-icons/gi";
 import { handleApiError } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import { decodedUser } from "../../utils/GlobalVariables";
+import { MdLocalShipping, MdWarehouse } from "react-icons/md";
 
 const InventoryManageRequestModal = ({
   requestData,
@@ -29,6 +30,8 @@ const InventoryManageRequestModal = ({
   const [signatories, setSignatories] = useState([]);
   const [notes, setNotes] = useState("");
 
+  const [distributionMethod, setDistributionMethod] = useState(1);
+
   const [signatoriesSelected, setSignatoriesSelected] = useState([]);
 
   const axiosPrivate = usePrivateAxios();
@@ -36,82 +39,23 @@ const InventoryManageRequestModal = ({
   const user = decodedUser();
 
   const allowedButtons = () => {
-    console.log("=== DEBUGGING allowedButtons ===");
-    console.log("1. Item_signatories:", requestData.Item_signatories);
-    console.log("2. Current user:", user);
+    if (!requestData.Item_signatories) return true;
 
-    // If signatories is null or empty, check if user is the first approver
+    const orderCount = requestData.Item_signatories.filter(
+      (fil) => fil.Status == "Approved"
+    );
+    const userApprover = requestData.Item_signatories.filter(
+      (fil) => fil.ID == user.ID
+    )[0];
+
     if (
-      !requestData.Item_signatories ||
-      requestData.Item_signatories.length === 0
-    ) {
-      console.log("3. Signatories is null/empty");
+      userApprover?.Order == orderCount.length &&
+      userApprover.length != 0 &&
+      userApprover.Status != "Approved"
+    )
+      return true;
 
-      // Check if current user has the appropriate role to be first approver
-      // Assuming Role 4 (Franklin) should approve first
-      // Adjust this condition based on your workflow
-      if (user.Role === 4) {
-        console.log("4. User is Role 4 (first approver) - RETURNING TRUE");
-        return true;
-      }
-
-      console.log("5. User is not the first approver - RETURNING FALSE");
-      return false;
-    }
-
-    // Find current user in signatories
-    const currentUserSignatory = requestData.Item_signatories.find(
-      (sig) => sig.ID === user.ID
-    );
-
-    console.log("6. Current user signatory found:", currentUserSignatory);
-
-    if (!currentUserSignatory) {
-      console.log("7. User not in signatories - RETURNING FALSE");
-      return false;
-    }
-
-    if (currentUserSignatory.Status === "Approved") {
-      console.log("8. User already approved - RETURNING FALSE");
-      return false;
-    }
-
-    // Sort by Role ascending (lower numbers first: 2, 3, 4, 5)
-    const sortedSignatories = [...requestData.Item_signatories].sort(
-      (a, b) => Number(a.Role) - Number(b.Role)
-    );
-
-    console.log(
-      "9. Sorted signatories:",
-      sortedSignatories.map((s) => ({
-        Name: s.Name,
-        Role: s.Role,
-        Status: s.Status,
-      }))
-    );
-
-    const currentUserIndex = sortedSignatories.findIndex(
-      (sig) => sig.ID === user.ID
-    );
-
-    console.log("10. Current user index:", currentUserIndex);
-
-    // Check if all lower-role signatories have approved
-    for (let i = 0; i < currentUserIndex; i++) {
-      console.log(
-        `11. Checking index ${i}: ${sortedSignatories[i].Name} (Role ${sortedSignatories[i].Role}) - Status: ${sortedSignatories[i].Status}`
-      );
-
-      if (sortedSignatories[i].Status !== "Approved") {
-        console.log(
-          `12. ${sortedSignatories[i].Name} hasn't approved - RETURNING FALSE`
-        );
-        return false;
-      }
-    }
-
-    console.log("13. ALL CHECKS PASSED - RETURNING TRUE");
-    return true;
+    return false;
   };
 
   const update_request = async (e) => {
@@ -144,7 +88,7 @@ const InventoryManageRequestModal = ({
 
       const newSignatory = requestData.Item_signatories.filter(
         (fil) => fil.ID != user.ID
-      )[0];
+      );
 
       const data = {
         ID: requestData.ID,
@@ -159,7 +103,7 @@ const InventoryManageRequestModal = ({
             Status: "Approved",
             Date: moment(),
             note: notes,
-            Order: newSignatory.Order,
+            Order: newSignatory[0].Order,
           },
         ],
       };
@@ -172,19 +116,6 @@ const InventoryManageRequestModal = ({
       handleApiError(error);
     }
   };
-
-  // const handleApprove = () => {
-  //   const data = {
-  //     signatory1: selectedSignatory1,
-  //     signatory2: selectedSignatory2,
-  //     signatory3: selectedSignatory3,
-  //     image: uploadedImage,
-  //     notes: notes,
-  //     action: "approved",
-  //   };
-  //   console.log("Approve:", data);
-  //   onApprove && onApprove(data);
-  // };
 
   const handleReturn = () => {
     const data = {
@@ -296,6 +227,71 @@ const InventoryManageRequestModal = ({
                 </div>
               </div>
 
+              {requestData.Item_signatories?.filter(
+                (fil) => fil.Status == "Pending"
+              ).length == 0 && (
+                <div className="bg-white border border-gray-200 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <MdWarehouse className="text-blue-600" />
+                    Distribution
+                  </h3>
+
+                  <div className="flex gap-6 mb-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        onChange={(e) => setDistributionMethod(1)}
+                        checked={distributionMethod == 1}
+                        type="radio"
+                        className="cursor-pointer"
+                      />
+                      <span className="text-gray-700">Manual Quantity</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        onChange={(e) => setDistributionMethod(2)}
+                        checked={distributionMethod == 2}
+                        type="radio"
+                        className="cursor-pointer"
+                      />
+                      <span className="text-gray-700">Serial Number Range</span>
+                    </label>
+                  </div>
+
+                  {distributionMethod == 1 ? (
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-gray-700">
+                        Quantity
+                      </label>
+                      <textarea
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        rows="3"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Initial Range
+                        </label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Final Range
+                        </label>
+                        <input
+                          type="number"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {!requestData.Item_amount && (
                 <div className="bg-white border border-gray-200 rounded-lg p-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -329,25 +325,29 @@ const InventoryManageRequestModal = ({
                           First Signatory
                         </label>
                         <select
-                          onChange={(e) =>
-                            setSignatoriesSelected((prev) => [
-                              ...prev,
-                              {
-                                Name:
-                                  e.target.selectedOptions[0].dataset
-                                    .firstname +
-                                  " " +
-                                  e.target.selectedOptions[0].dataset.lastname,
-                                ID: e.target.value,
-                                Role: e.target.selectedOptions[0].dataset.role,
-                                Position:
-                                  e.target.selectedOptions[0].dataset.position,
-                                Order: 1,
-                                Status: "Pending",
-                                Date: null,
-                              },
-                            ])
-                          }
+                          onChange={(e) => {
+                            const newSignatory = {
+                              Name:
+                                e.target.selectedOptions[0].dataset.firstname +
+                                " " +
+                                e.target.selectedOptions[0].dataset.lastname,
+                              ID: e.target.value,
+                              Role: e.target.selectedOptions[0].dataset.role,
+                              Position:
+                                e.target.selectedOptions[0].dataset.position,
+                              Order: 1, // Change this to 2, 3, 4, etc. depending on which select this is
+                              Status: "Pending",
+                              Date: null,
+                            };
+
+                            // Remove any existing entry with same Order, then add new one
+                            setSignatoriesSelected([
+                              ...signatoriesSelected.filter(
+                                (sig) => sig.Order !== 1
+                              ),
+                              newSignatory,
+                            ]);
+                          }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option value="">Select signatory</option>
@@ -372,25 +372,29 @@ const InventoryManageRequestModal = ({
                           Second Signatory
                         </label>
                         <select
-                          onChange={(e) =>
-                            setSignatoriesSelected((prev) => [
-                              ...prev,
-                              {
-                                Name:
-                                  e.target.selectedOptions[0].dataset
-                                    .firstname +
-                                  " " +
-                                  e.target.selectedOptions[0].dataset.lastname,
-                                ID: e.target.value,
-                                Role: e.target.selectedOptions[0].dataset.role,
-                                Position:
-                                  e.target.selectedOptions[0].dataset.position,
-                                Order: 1,
-                                Status: "Pending",
-                                Date: null,
-                              },
-                            ])
-                          }
+                          onChange={(e) => {
+                            const newSignatory = {
+                              Name:
+                                e.target.selectedOptions[0].dataset.firstname +
+                                " " +
+                                e.target.selectedOptions[0].dataset.lastname,
+                              ID: e.target.value,
+                              Role: e.target.selectedOptions[0].dataset.role,
+                              Position:
+                                e.target.selectedOptions[0].dataset.position,
+                              Order: 2, // Change this to 2, 3, 4, etc. depending on which select this is
+                              Status: "Pending",
+                              Date: null,
+                            };
+
+                            // Remove any existing entry with same Order, then add new one
+                            setSignatoriesSelected([
+                              ...signatoriesSelected.filter(
+                                (sig) => sig.Order !== 2
+                              ),
+                              newSignatory,
+                            ]);
+                          }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option value="">Select signatory</option>
@@ -415,25 +419,29 @@ const InventoryManageRequestModal = ({
                           Third Signatory (Optional)
                         </label>
                         <select
-                          onChange={(e) =>
-                            setSignatoriesSelected((prev) => [
-                              ...prev,
-                              {
-                                Name:
-                                  e.target.selectedOptions[0].dataset
-                                    .firstname +
-                                  " " +
-                                  e.target.selectedOptions[0].dataset.lastname,
-                                ID: e.target.value,
-                                Role: e.target.selectedOptions[0].dataset.role,
-                                Position:
-                                  e.target.selectedOptions[0].dataset.position,
-                                Order: 1,
-                                Status: "Pending",
-                                Date: null,
-                              },
-                            ])
-                          }
+                          onChange={(e) => {
+                            const newSignatory = {
+                              Name:
+                                e.target.selectedOptions[0].dataset.firstname +
+                                " " +
+                                e.target.selectedOptions[0].dataset.lastname,
+                              ID: e.target.value,
+                              Role: e.target.selectedOptions[0].dataset.role,
+                              Position:
+                                e.target.selectedOptions[0].dataset.position,
+                              Order: 3, // Change this to 2, 3, 4, etc. depending on which select this is
+                              Status: "Pending",
+                              Date: null,
+                            };
+
+                            // Remove any existing entry with same Order, then add new one
+                            setSignatoriesSelected([
+                              ...signatoriesSelected.filter(
+                                (sig) => sig.Order !== 3
+                              ),
+                              newSignatory,
+                            ]);
+                          }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option value="">Select signatory</option>
@@ -641,6 +649,15 @@ const InventoryManageRequestModal = ({
                   Approve
                 </button>{" "}
               </>
+            )}
+
+            {requestData?.Item_signatories?.filter(
+              (fil) => fil.Status == "Pending"
+            ).length == 0 && (
+              <button className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2">
+                <MdLocalShipping className="text-xl" />
+                Ready for Shipment
+              </button>
             )}
           </div>
         </div>
