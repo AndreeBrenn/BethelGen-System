@@ -8,6 +8,7 @@ const {
   sequelize,
 } = require("../models");
 const { Op } = require("sequelize");
+const fs = require("fs");
 
 //#region CATEGORY
 
@@ -551,8 +552,36 @@ const get_all_request = async (req, res, next) => {
 const update_request = async (req, res, next) => {
   const requestData = req.body;
 
-  console.log(requestData);
   try {
+    const imagesData = req.files || [];
+
+    if (imagesData.length != 0) {
+      imagesData.forEach((element) => {
+        fs.rename(
+          `./media/${element.filename}`,
+          `./media/${element.filename}.png`,
+          (err) => console.log(err)
+        );
+      });
+
+      const arrayUpload = imagesData.map((item) => {
+        return `/media/${item.filename}.png`;
+      });
+
+      const result = await Inventory_Request.update(
+        {
+          Item_value: JSON.parse(requestData.Item_value),
+          Item_signatories: JSON.parse(requestData.Item_signatories),
+          Item_image: arrayUpload,
+        },
+        {
+          where: { ID: requestData.ID },
+        }
+      );
+
+      return res.status(200).json(result);
+    }
+
     const result = await Inventory_Request.update(
       { ...requestData },
       {
@@ -567,6 +596,27 @@ const update_request = async (req, res, next) => {
 };
 
 //#endregion
+
+// TESTING
+
+const upload_image = (req, res, next) => {
+  try {
+    const imagesData = req.files || [];
+
+    if (imagesData.length != 0) {
+      imagesData.forEach((element) => {
+        fs.rename(
+          `./media/${element.filename}`,
+          `./media/${element.filename}.png`,
+          (err) => console.log(err)
+        );
+      });
+    }
+    return res.status(200).json("./.");
+  } catch (error) {
+    next(error);
+  }
+};
 
 module.exports = {
   create_category,
@@ -591,4 +641,5 @@ module.exports = {
   get_all_request,
   update_request,
   get_filtered_items,
+  upload_image,
 };

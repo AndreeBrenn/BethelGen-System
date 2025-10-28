@@ -13,44 +13,6 @@ import { MdPending } from "react-icons/md";
 
 const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
   // Sample data structure - replace with your actual data
-  const sampleData = {
-    ID: 1,
-    Item_name: "Laptop Dell Inspiron 15",
-    Item_description:
-      "High-performance laptop for development work with 16GB RAM and 512GB SSD",
-    Item_branch: "IT Department - Main Office",
-    Item_status: "Approved",
-    item_signatories: [
-      {
-        role: "Requester",
-        name: "John Doe",
-        status: "submitted",
-        date: "2024-10-15T08:30:00",
-        remarks: "Urgent need for development project",
-      },
-      {
-        role: "Department Head",
-        name: "Jane Smith",
-        status: "approved",
-        date: "2024-10-16T10:15:00",
-        remarks: "Approved - Valid business requirement",
-      },
-      {
-        role: "Vice President",
-        name: "Michael Johnson",
-        status: "approved",
-        date: "2024-10-17T14:20:00",
-        remarks: "Budget verified and approved",
-      },
-      {
-        role: "President",
-        name: "Sarah Williams",
-        status: "pending",
-        date: null,
-        remarks: null,
-      },
-    ],
-  };
 
   const data = requestData || sampleData;
 
@@ -162,10 +124,7 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
                   {data.Item_status}
                 </span>
               </div>
-              <div className="md:col-span-2">
-                <p className="text-sm text-gray-500 mb-1">Item Name</p>
-                <p className="font-semibold text-gray-900">{data.Item_name}</p>
-              </div>
+
               <div className="md:col-span-2">
                 <p className="text-sm text-gray-500 mb-1">Description</p>
                 <p className="text-gray-700">{data.Item_description}</p>
@@ -174,6 +133,56 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
                 <FaMapMarkerAlt className="text-blue-600" />
                 <span>{data.Item_branch}</span>
               </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Requested Items
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Subcategory
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Classification
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Item Name
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Quantity
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {data.Item_value?.map((item) => (
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {item.Item_category}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {item.Item_subcategory}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {item.Item_classification}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {item.Item_name}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {item.Item_quantity}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 

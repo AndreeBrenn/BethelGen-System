@@ -52,7 +52,6 @@ import axios from "axios";
 // Create instance OUTSIDE component
 const axiosPrivate = axios.create({
   baseURL: import.meta.env.VITE_AXIOS_URL,
-  headers: { "Content-Type": "application/json" },
   withCredentials: true,
 });
 

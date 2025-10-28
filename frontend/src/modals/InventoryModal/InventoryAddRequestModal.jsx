@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { decodedUser } from "../../utils/GlobalVariables";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import { handleApiError } from "../../utils/HandleError";
+import { MdDelete } from "react-icons/md";
 
 const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
   const [inputFields, setInputFields] = useState({
@@ -13,8 +14,12 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
     Item_quantity: 0,
     Item_status: "Pending",
   });
+
   const [dropDownData, setDropDownData] = useState([]);
   const [dropDownDocuments, setDropDownDocuments] = useState([]);
+  const [activeTab, setActiveTab] = useState("assets");
+
+  const [requestArray, setRequestArray] = useState([]);
 
   const user = decodedUser();
   const axiosPrivate = usePrivateAxios();
@@ -65,12 +70,17 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
     e.preventDefault();
 
     try {
+      if (requestArray.length == 0) {
+        alert("there's no item detected");
+        return;
+      }
+
       const submittedData = {
-        ...inputFields,
-        Item_category: inputFields.Item_category.name,
-        Item_subcategory: inputFields.Item_subcategory.name,
+        Item_value: requestArray,
+        Item_description: inputFields.Item_description,
         Item_branch: user.Branch,
         USER_ID: user.ID,
+        Item_status: "Pending",
       };
       const res = await axiosPrivate.post(
         "/inventory/create-request",
@@ -89,9 +99,35 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
         Item_quantity: 0,
         Item_status: "Pending",
       });
+      setRequestArray([]);
     } catch (error) {
       handleApiError(error);
     }
+  };
+
+  const click_documents = (e) => {
+    e.preventDefault();
+
+    setActiveTab("documents");
+    const documentCategory = dropDownData?.filter(
+      (fil) => fil.Category_name == "Fixed Assets"
+    )[0];
+
+    const document_subcategory = dropDownData
+      ?.filter((fil) => fil.ID == documentCategory.ID)[0]
+      ?.inv_subcat?.filter((fil) => fil.Subcategory_name == "Documents")[0];
+
+    setInputFields({
+      ...inputFields,
+      Item_category: {
+        ID: documentCategory.ID,
+        name: documentCategory.Category_name,
+      },
+      Item_subcategory: {
+        ID: document_subcategory.ID,
+        name: document_subcategory.Subcategory_name,
+      },
+    });
   };
 
   return (
@@ -125,83 +161,116 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
           </button>
         </div>
 
+        <div className="w-full">
+          {/* Tab Buttons */}
+          <div className="flex gap-2 px-6 mt-4">
+            <button
+              type="button"
+              onClick={() => setActiveTab("assets")}
+              className={`px-4 py-2 rounded-md font-medium transition-all cursor-pointer ${
+                activeTab === "assets"
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              Assets
+            </button>
+            <button
+              type="button"
+              onClick={(e) => click_documents(e)}
+              className={`px-4 py-2 rounded-md font-medium transition-all cursor-pointer ${
+                activeTab === "documents"
+                  ? "bg-blue-600 text-white shadow-md"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              }`}
+            >
+              Documents
+            </button>
+          </div>
+        </div>
         <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category <span className="text-red-500">*</span>
-              </label>
-              <select
-                onChange={(e) =>
-                  setInputFields({
-                    ...inputFields,
-                    Item_category: {
-                      ID: e.target.selectedOptions[0].dataset.id,
-                      name: e.target.selectedOptions[0].dataset.name,
-                    },
-                    Item_subcategory: { ID: "", name: "" },
-                    Item_classification: "",
-                  })
-                }
-                value={inputFields.Item_category.name}
-                name="category"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option hidden defaultValue="">
-                  Select a category
-                </option>
-                {dropDownData.map((data) => (
-                  <>
-                    <option
-                      value={data.Category_name}
-                      data-id={data.ID}
-                      data-name={data.Category_name}
-                    >
-                      {data.Category_name}
+            {activeTab == "assets" && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    onChange={(e) =>
+                      setInputFields({
+                        ...inputFields,
+                        Item_category: {
+                          ID: e.target.selectedOptions[0].dataset.id,
+                          name: e.target.selectedOptions[0].dataset.name,
+                        },
+                        Item_subcategory: { ID: "", name: "" },
+                        Item_classification: "",
+                      })
+                    }
+                    value={inputFields.Item_category.name}
+                    name="category"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option hidden defaultValue="">
+                      Select a category
                     </option>
-                  </>
-                ))}
-              </select>
-            </div>
+                    {dropDownData.map((data) => (
+                      <>
+                        <option
+                          value={data.Category_name}
+                          data-id={data.ID}
+                          data-name={data.Category_name}
+                        >
+                          {data.Category_name}
+                        </option>
+                      </>
+                    ))}
+                  </select>
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Sub-Category <span className="text-red-500">*</span>
-              </label>
-              <select
-                disabled={inputFields.Item_category.ID == ""}
-                onChange={(e) =>
-                  setInputFields({
-                    ...inputFields,
-                    Item_subcategory: {
-                      ID: e.target.selectedOptions[0].dataset.id,
-                      name: e.target.selectedOptions[0].dataset.name,
-                    },
-                    Item_classification: "",
-                  })
-                }
-                value={inputFields.Item_subcategory.name}
-                name="category"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option hidden defaultValue="">
-                  Select a Subcategory
-                </option>
-                {dropDownData
-                  .filter((fil) => fil.ID == inputFields.Item_category.ID)[0]
-                  ?.inv_subcat.map((data) => (
-                    <>
-                      <option
-                        value={data.Subcategory_name}
-                        data-id={data.ID}
-                        data-name={data.Subcategory_name}
-                      >
-                        {data.Subcategory_name}
-                      </option>
-                    </>
-                  ))}
-              </select>
-            </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sub-Category <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    disabled={inputFields.Item_category.ID == ""}
+                    onChange={(e) =>
+                      setInputFields({
+                        ...inputFields,
+                        Item_subcategory: {
+                          ID: e.target.selectedOptions[0].dataset.id,
+                          name: e.target.selectedOptions[0].dataset.name,
+                        },
+                        Item_classification: "",
+                      })
+                    }
+                    value={inputFields.Item_subcategory.name}
+                    name="category"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option hidden defaultValue="">
+                      Select a Subcategory
+                    </option>
+                    {dropDownData
+                      .filter(
+                        (fil) => fil.ID == inputFields.Item_category.ID
+                      )[0]
+                      ?.inv_subcat.map((data) => (
+                        <>
+                          <option
+                            value={data.Subcategory_name}
+                            data-id={data.ID}
+                            data-name={data.Subcategory_name}
+                          >
+                            {data.Subcategory_name}
+                          </option>
+                        </>
+                      ))}
+                  </select>
+                </div>
+              </>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -240,10 +309,8 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
               </select>
             </div>
           </div>
-
           <div className="md:col-span-2 my-2">
-            {inputFields.Item_category.name == "Fixed Assets" &&
-            inputFields.Item_subcategory.name == "Documents" ? (
+            {activeTab == "documents" ? (
               <>
                 {" "}
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -256,7 +323,6 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
                       Item_name: e.target.value,
                     })
                   }
-                  required
                   value={inputFields.Item_name}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter item name"
@@ -281,13 +347,129 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
                       Item_name: e.target.value,
                     })
                   }
-                  required
                   value={inputFields.Item_name}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter item name"
                 />
               </>
             )}
+          </div>
+
+          <div className="md:col-span-2 my-3">
+            <label className="block text-sm font-medium text-gray-700 my-2">
+              Quantity / Amount<span className="text-red-500">*</span>
+            </label>
+            <input
+              onChange={(e) =>
+                setInputFields({
+                  ...inputFields,
+                  Item_quantity: e.target.value,
+                })
+              }
+              required
+              type="number"
+              value={inputFields.Item_quantity}
+              className="w-full px-3 mb-4  py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Description"
+            />
+
+            <button
+              onClick={() => {
+                setRequestArray((prev) => [
+                  ...prev,
+                  {
+                    Item_name: inputFields.Item_name,
+                    Item_category: inputFields.Item_category.name,
+                    Item_subcategory: inputFields.Item_subcategory.name,
+                    Item_classification: inputFields.Item_classification,
+                    Item_quantity: inputFields.Item_quantity,
+                  },
+                ]);
+
+                setInputFields({
+                  Item_name: "",
+                  Item_category: { ID: "", name: "" },
+                  Item_subcategory: { ID: "", name: "" },
+                  Item_classification: "",
+                  Item_description: "",
+                  Item_quantity: 0,
+                  Item_status: "Pending",
+                });
+              }}
+              type="button"
+              className="w-full px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+            >
+              Add Item to Request
+            </button>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">
+              Requested Items
+            </h3>
+            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Subcategory
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Classification
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Item Name
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Quantity
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {requestArray.map((item) => (
+                    <tr className="hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {item.Item_category}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {item.Item_subcategory}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {item.Item_classification}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {item.Item_name}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900">
+                        {item.Item_quantity}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            const newArray = requestArray.filter(
+                              (fil) => fil.Item_name != item.Item_name
+                            );
+                            setRequestArray(newArray);
+                          }}
+                          className="text-red-600 hover:text-red-800 transition-colors"
+                          title="Remove item"
+                        >
+                          <MdDelete className="w-5 h-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="md:col-span-2 my-3">
@@ -308,25 +490,6 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
             />
           </div>
 
-          <div className="md:col-span-2 my-3">
-            <label className="block text-sm font-medium text-gray-700 my-2">
-              Quantity / Amount<span className="text-red-500">*</span>
-            </label>
-            <input
-              onChange={(e) =>
-                setInputFields({
-                  ...inputFields,
-                  Item_quantity: e.target.value,
-                })
-              }
-              required
-              type="number"
-              value={inputFields.Item_quantity}
-              className="w-full px-3  py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Description"
-            />
-          </div>
-
           <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
             <button
               type="button"
@@ -339,7 +502,7 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
               type="submit"
               className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
-              File Request
+              File Request ({requestArray.length})
             </button>
           </div>
         </div>

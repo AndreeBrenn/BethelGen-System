@@ -15,36 +15,32 @@ import { GiPayMoney } from "react-icons/gi";
 import { handleApiError } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import { decodedUser } from "../../utils/GlobalVariables";
-import { MdLocalShipping, MdWarehouse } from "react-icons/md";
+import { MdLocalShipping } from "react-icons/md";
 
 const InventoryManageRequestModal = ({
   requestData,
   onClose,
-  onApprove,
   onReturn,
   onReject,
 }) => {
-  const [amount, setAmount] = useState(0);
-
+  const [itemData, setItemData] = useState(requestData);
   const [uploadedImage, setUploadedImage] = useState(null);
   const [signatories, setSignatories] = useState([]);
   const [notes, setNotes] = useState("");
-
-  const [distributionMethod, setDistributionMethod] = useState(1);
-
   const [signatoriesSelected, setSignatoriesSelected] = useState([]);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
 
   const axiosPrivate = usePrivateAxios();
 
   const user = decodedUser();
 
   const allowedButtons = () => {
-    if (!requestData.Item_signatories) return true;
+    if (!itemData.Item_signatories) return true;
 
-    const orderCount = requestData.Item_signatories.filter(
+    const orderCount = itemData.Item_signatories.filter(
       (fil) => fil.Status == "Approved"
     );
-    const userApprover = requestData.Item_signatories.filter(
+    const userApprover = itemData.Item_signatories.filter(
       (fil) => fil.ID == user.ID
     )[0];
 
@@ -58,12 +54,28 @@ const InventoryManageRequestModal = ({
     return false;
   };
 
+  const get_all_users = useCallback(async () => {
+    try {
+      const res = await axiosPrivate.get("/users/get-all-users");
+
+      setSignatories(res.data);
+    } catch (error) {
+      handleApiError(error);
+    }
+  }, []);
+
+  useEffect(() => {
+    get_all_users();
+  }, []);
+
   const update_request = async (e) => {
     e.preventDefault();
     try {
-      if (!requestData.Item_signatories) {
+      let form = new FormData();
+      if (!itemData.Item_signatories) {
         const data = {
-          ID: requestData.ID,
+          ID: itemData.ID,
+          Item_value: itemData.Item_value,
           Item_signatories: [
             ...signatoriesSelected,
             {
@@ -78,20 +90,30 @@ const InventoryManageRequestModal = ({
               Order: 0,
             },
           ],
-          Item_amount: amount,
         };
 
-        const res = await axiosPrivate.put("/inventory/update-request", data);
+        form.append("Item_value", JSON.stringify(data.Item_value));
+        form.append("ID", data.ID);
+        form.append("Item_signatories", JSON.stringify(data.Item_signatories));
+
+        const flatFiles = uploadedFiles.flat();
+        flatFiles.forEach((file) => {
+          form.append("images", file);
+        });
+
+        console.log(uploadedFiles);
+
+        const res = await axiosPrivate.put("/inventory/update-request", form);
         alert("Data Updated");
         return;
       }
 
-      const newSignatory = requestData.Item_signatories.filter(
+      const newSignatory = itemData.Item_signatories.filter(
         (fil) => fil.ID != user.ID
       );
 
       const data = {
-        ID: requestData.ID,
+        ID: itemData.ID,
         Item_signatories: [
           ...newSignatory,
           {
@@ -117,40 +139,34 @@ const InventoryManageRequestModal = ({
     }
   };
 
-  const handleReturn = () => {
-    const data = {
-      notes: notes,
-      action: "returned",
-    };
-    console.log("Return:", data);
-    onReturn && onReturn(data);
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [tempAmount, setTempAmount] = useState("");
+
+  const handleAmountSave = (index) => {
+    setItemData((prev) => {
+      // Make a copy of the previous state
+      const newData = { ...prev };
+
+      // Make a copy of the nested array
+      const newItemValue = [...newData.Item_value];
+
+      // Update the specific element's Amount
+      newItemValue[index] = {
+        ...newItemValue[index],
+        Amount: tempAmount,
+      };
+
+      // Assign the updated array back
+      newData.Item_value = newItemValue;
+
+      return newData;
+    });
+
+    setEditingIndex(null);
   };
-
-  const handleReject = () => {
-    const data = {
-      notes: notes,
-      action: "rejected",
-    };
-    console.log("Reject:", data);
-    onReject && onReject(data);
-  };
-
-  const get_all_users = useCallback(async () => {
-    try {
-      const res = await axiosPrivate.get("/users/get-all-users");
-
-      setSignatories(res.data);
-    } catch (error) {
-      handleApiError(error);
-    }
-  }, []);
-
-  useEffect(() => {
-    get_all_users();
-  }, []);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 bg-opacity-50 backdrop-blur-sm">
       <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b">
@@ -176,143 +192,140 @@ const InventoryManageRequestModal = ({
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600">Request #</p>
-                    <p className="font-semibold">{requestData?.ID}</p>
+                    <p className="font-semibold">{itemData?.ID}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Status</p>
                     <span className="inline-block px-3 py-1 text-sm font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                      {requestData?.Item_status}
+                      {itemData?.Item_status}
                     </span>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Item Name</p>
-                    <p className="font-semibold">{requestData?.Item_name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Quantity</p>
-                    <p className="font-semibold">
-                      {requestData?.Item_quantity}
-                    </p>
-                  </div>
+
                   <div>
                     <p className="text-sm text-gray-600">Requester</p>
                     <p className="font-semibold">
-                      {`${requestData.Item_userID.FirstName} ${requestData.Item_userID.LastName}`}
+                      {`${itemData.Item_userID.FirstName} ${itemData.Item_userID.LastName}`}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Department</p>
                     <p className="font-semibold">
-                      {requestData?.Item_userID?.Department}
+                      {itemData?.Item_userID?.Department}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Category</p>
-                    <p className="font-semibold">
-                      {requestData?.Item_category}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Subcategory</p>
-                    <p className="font-semibold">
-                      {requestData?.Item_subcategory}
-                    </p>
-                  </div>
+
                   <div className="col-span-2">
                     <p className="text-sm text-gray-600 ">Description</p>
                     <p className="font-semibold">
-                      {requestData?.Item_description}
+                      {itemData?.Item_description}
                     </p>
                   </div>
                 </div>
               </div>
 
-              {requestData.Item_signatories?.filter(
-                (fil) => fil.Status == "Pending"
-              ).length == 0 && (
-                <div className="bg-white border border-gray-200 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <MdWarehouse className="text-blue-600" />
-                    Distribution
-                  </h3>
+              {/* ITEM TABLE */}
+              <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Requested Items
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Category
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Subcategory
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Classification
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Item Name
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Quantity
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Amount
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {itemData.Item_value.map((item, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {item.Item_category}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {item.Item_subcategory}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {item.Item_classification}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {item.Item_name}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {item.Item_quantity}
+                          </td>
 
-                  <div className="flex gap-6 mb-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        onChange={(e) => setDistributionMethod(1)}
-                        checked={distributionMethod == 1}
-                        type="radio"
-                        className="cursor-pointer"
-                      />
-                      <span className="text-gray-700">Manual Quantity</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        onChange={(e) => setDistributionMethod(2)}
-                        checked={distributionMethod == 2}
-                        type="radio"
-                        className="cursor-pointer"
-                      />
-                      <span className="text-gray-700">Serial Number Range</span>
-                    </label>
-                  </div>
-
-                  {distributionMethod == 1 ? (
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Quantity
-                      </label>
-                      <textarea
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        rows="3"
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Initial Range
-                        </label>
-                        <input
-                          type="number"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Final Range
-                        </label>
-                        <input
-                          type="number"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                    </div>
-                  )}
+                          {/* Editable Amount column */}
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {editingIndex === index ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  value={tempAmount}
+                                  onChange={(e) =>
+                                    setTempAmount(e.target.value)
+                                  }
+                                  className="w-20 border border-gray-300 rounded-md px-2 py-1 text-sm focus:ring focus:ring-blue-300"
+                                />
+                                <button
+                                  onClick={() => handleAmountSave(index)}
+                                  className="text-blue-600 hover:underline text-sm"
+                                >
+                                  Save
+                                </button>
+                              </div>
+                            ) : (
+                              <span
+                                onClick={() => {
+                                  setEditingIndex(index);
+                                  setTempAmount(item.Amount || "");
+                                }}
+                                className="cursor-pointer text-blue-600 hover:underline"
+                                title="Click to edit"
+                              >
+                                {item.Amount ?? "—"}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr className="hover:bg-gray-50">
+                        <td
+                          className="px-4 py-3 text-sm text-gray-900"
+                          colSpan={5}
+                        >
+                          Total:
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-900">
+                          {itemData.Item_value.reduce(
+                            (a, b) => parseInt(a) + parseInt(b.Amount),
+                            0
+                          )}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
-              )}
+              </div>
 
-              {!requestData.Item_amount && (
-                <div className="bg-white border border-gray-200 rounded-lg p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <GiPayMoney className="text-blue-600" />
-                    Amount
-                  </h3>
-
-                  <div className="space-y-4">
-                    <div>
-                      <input
-                        type="number"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
               {/* Assign Signatories */}
-              {!requestData.Item_signatories && (
+              {!itemData.Item_signatories && (
                 <>
                   <div className="bg-white border border-gray-200 rounded-lg p-4">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -475,8 +488,14 @@ const InventoryManageRequestModal = ({
                           type="file"
                           id="file-upload"
                           accept="image/*"
-                          //  onChange={handleImageUpload}
+                          onChange={(e) =>
+                            setUploadedFiles((prev) => [
+                              ...prev,
+                              ...Array.from(e.target.files),
+                            ])
+                          }
                           className="hidden"
+                          multiple
                         />
                         <label
                           htmlFor="file-upload"
@@ -555,19 +574,19 @@ const InventoryManageRequestModal = ({
                     <div className="flex-1 pb-8">
                       <p className="font-semibold text-gray-900">Submitted</p>
                       <p className="text-sm text-gray-600">
-                        {requestData.Item_userID.FirstName +
+                        {itemData.Item_userID.FirstName +
                           " " +
-                          requestData.Item_userID.LastName}
+                          itemData.Item_userID.LastName}
                       </p>
 
                       <p className="text-xs text-gray-500 mt-1">
-                        {moment(requestData.createdAt).format(
+                        {moment(itemData.createdAt).format(
                           "YYYY-MM-DD hh:mm A"
                         )}
                       </p>
                     </div>
                   </div>
-                  {requestData.Item_signatories?.sort(
+                  {itemData.Item_signatories?.sort(
                     (a, b) => a?.Order - b?.Order
                   ).map((item, index) => (
                     <div key={item.ID} className="flex gap-3">
@@ -627,17 +646,11 @@ const InventoryManageRequestModal = ({
             </button>
             {allowedButtons() && (
               <>
-                <button
-                  onClick={handleReject}
-                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
-                >
+                <button className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2">
                   <FaBan />
                   Reject
                 </button>
-                <button
-                  onClick={handleReturn}
-                  className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium flex items-center gap-2"
-                >
+                <button className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium flex items-center gap-2">
                   <FaUndo />
                   Return
                 </button>
@@ -651,7 +664,7 @@ const InventoryManageRequestModal = ({
               </>
             )}
 
-            {requestData?.Item_signatories?.filter(
+            {itemData?.Item_signatories?.filter(
               (fil) => fil.Status == "Pending"
             ).length == 0 && (
               <button className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2">

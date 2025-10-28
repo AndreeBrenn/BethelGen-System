@@ -5,30 +5,16 @@ module.exports = (sequelize, DataTypes) => {
       primaryKey: true,
       autoIncrement: true,
     },
-    Item_name: {
-      type: DataTypes.STRING,
-      allowNull: false,
+    Item_value: {
+      type: DataTypes.JSONB,
+      allowNull: true,
     },
-    Item_classification: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    Item_subcategory: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    Item_category: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
+
     Item_description: {
       type: DataTypes.TEXT("long"),
       allowNull: false,
     },
-    Item_quantity: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
+
     Item_status: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -41,8 +27,8 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    Item_amount: {
-      type: DataTypes.DECIMAL,
+    Item_image: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },
   });

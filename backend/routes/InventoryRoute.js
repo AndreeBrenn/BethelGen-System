@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { protected } = require("../middleware/protect");
+const multer = require("multer");
 const {
   create_category,
   get_category,
@@ -24,7 +25,9 @@ const {
   update_request,
   get_documents,
   get_filtered_items,
+  upload_image,
 } = require("../controller/InventoryController");
+const { uploadSupportingForms } = require("../middleware/multerUploading");
 
 router.post("/create-category", protected, create_category);
 router.get("/get-category", protected, get_category);
@@ -55,6 +58,7 @@ router.delete(
   delete_request_inventory
 );
 router.get("/get-all-request", protected, get_all_request);
-router.put("/update-request", protected, update_request);
+router.put("/update-request", protected, uploadSupportingForms, update_request);
+router.put("/try-multer", uploadSupportingForms, upload_image);
 
 module.exports = router;

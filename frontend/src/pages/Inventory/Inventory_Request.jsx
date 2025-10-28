@@ -29,7 +29,6 @@ const Item_Request = () => {
 
   // Sample data - replace with actual data
 
-  console.log(viewRequestModal);
   const [itemRequests, setItemRequest] = useState([]);
 
   const handleView = (item) => {
