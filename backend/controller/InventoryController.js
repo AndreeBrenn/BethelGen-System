@@ -472,6 +472,7 @@ const get_inventory_request_personal = async (req, res, next) => {
       where: whereClause,
       offset,
       limit,
+      order: ["ID"],
     });
 
     return res.status(200).json(result);
@@ -537,6 +538,7 @@ const get_all_request = async (req, res, next) => {
       distinct: true,
       limit,
       offset,
+      order: ["ID"],
     });
 
     return res.status(200).json(result);
@@ -583,7 +585,11 @@ const update_request = async (req, res, next) => {
     }
 
     const result = await Inventory_Request.update(
-      { ...requestData },
+      {
+        ...requestData,
+        Item_signatories: JSON?.parse(requestData?.Item_signatories),
+        Item_value: JSON?.parse(requestData?.Item_value),
+      },
       {
         where: { ID: requestData.ID },
       }
@@ -597,26 +603,48 @@ const update_request = async (req, res, next) => {
 
 //#endregion
 
-// TESTING
+//#region SHIPMENT
 
-const upload_image = (req, res, next) => {
+/* THIS REGION ALLOWS MULTIPLE CALL TO DB BECAUSE OF THE RELATIONSHIP BETWEEN 3 TABLES
+  INVENTORY_ITEM
+  INVENTORY_REQUEST
+  INVENTORY_STOCKS
+*/
+
+const ship_items = async (req, res, next) => {
+  const itemData = req.body;
+
   try {
-    const imagesData = req.files || [];
+    const where = {
+      [Op.and]: itemData.items.map((q) => ({
+        Item_ID: q.Item_ID,
+        Item_serial: q.Item_serial,
+      })),
+    };
 
-    if (imagesData.length != 0) {
-      imagesData.forEach((element) => {
-        fs.rename(
-          `./media/${element.filename}`,
-          `./media/${element.filename}.png`,
-          (err) => console.log(err)
-        );
+    const existingRecord = await Item_Stocks.findAll({ where });
+
+    const missing = itemData.items.filter(
+      (fil) =>
+        !existingRecord.some(
+          (som) =>
+            som.Item_ID == fil.Item_ID && som.Item_serial == fil.Item_serial
+        )
+    );
+
+    if (missing) {
+      return res.status(404).json({
+        message: `These Items do not exist: ${JSON.stringify(missing)}`,
       });
     }
-    return res.status(200).json("./.");
+
+    return res.status(200).json(existingRecord);
   } catch (error) {
     next(error);
   }
 };
+
+//#endregion
 
 module.exports = {
   create_category,
@@ -641,5 +669,5 @@ module.exports = {
   get_all_request,
   update_request,
   get_filtered_items,
-  upload_image,
+  ship_items,
 };

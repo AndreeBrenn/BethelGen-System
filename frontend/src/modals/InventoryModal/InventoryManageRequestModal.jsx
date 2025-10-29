@@ -8,10 +8,9 @@ import {
   FaUser,
   FaCheckCircle,
   FaClock,
-  FaTimesCircle,
+  FaBoxOpen,
 } from "react-icons/fa";
 import moment from "moment";
-import { GiPayMoney } from "react-icons/gi";
 import { handleApiError } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import { decodedUser } from "../../utils/GlobalVariables";
@@ -29,6 +28,7 @@ const InventoryManageRequestModal = ({
   const [notes, setNotes] = useState("");
   const [signatoriesSelected, setSignatoriesSelected] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [dropDownAssign, setDropDownAssign] = useState([]);
 
   const axiosPrivate = usePrivateAxios();
 
@@ -72,7 +72,14 @@ const InventoryManageRequestModal = ({
     e.preventDefault();
     try {
       let form = new FormData();
+
+      // INITIAL STAGE
       if (!itemData.Item_signatories) {
+        if (signatoriesSelected.length == 0) {
+          alert("Please assign a signatory");
+          return;
+        }
+
         const data = {
           ID: itemData.ID,
           Item_value: itemData.Item_value,
@@ -101,12 +108,12 @@ const InventoryManageRequestModal = ({
           form.append("images", file);
         });
 
-        console.log(uploadedFiles);
-
         const res = await axiosPrivate.put("/inventory/update-request", form);
         alert("Data Updated");
         return;
       }
+
+      // APPROVING STAGE
 
       const newSignatory = itemData.Item_signatories.filter(
         (fil) => fil.ID != user.ID
@@ -114,6 +121,7 @@ const InventoryManageRequestModal = ({
 
       const data = {
         ID: itemData.ID,
+        Item_value: itemData.Item_value,
         Item_signatories: [
           ...newSignatory,
           {
@@ -130,7 +138,11 @@ const InventoryManageRequestModal = ({
         ],
       };
 
-      const res = await axiosPrivate.put("/inventory/update-request", data);
+      form.append("ID", data.ID);
+      form.append("Item_signatories", JSON.stringify(data.Item_signatories));
+      form.append("Item_value", JSON.stringify(data.Item_value));
+
+      const res = await axiosPrivate.put("/inventory/update-request", form);
 
       alert("Data Updated!");
     } catch (error) {
@@ -153,7 +165,7 @@ const InventoryManageRequestModal = ({
       // Update the specific element's Amount
       newItemValue[index] = {
         ...newItemValue[index],
-        Amount: tempAmount,
+        Item_amount: tempAmount,
       };
 
       // Assign the updated array back
@@ -164,6 +176,38 @@ const InventoryManageRequestModal = ({
 
     setEditingIndex(null);
   };
+
+  const get_item_filtered = async (category, subcategory, classification) => {
+    try {
+      const res = await axiosPrivate.get("/inventory/get-filtered-items", {
+        params: {
+          Item_category: category,
+          Item_subcategory: subcategory,
+          Item_classification: classification,
+        },
+      });
+
+      setDropDownAssign(res.data);
+    } catch (error) {
+      handleApiError(error);
+    }
+  };
+
+  const ship_items = async (e) => {
+    e, preventDefault();
+
+    try {
+      const res = await axiosPrivate.put("/inventory/ship-items");
+    } catch (error) {
+      handleApiError(error);
+    }
+  };
+
+  const [selectedItem, setSelectedItem] = useState([]);
+  const [serial, setSerials] = useState([]);
+
+  console.log(selectedItem);
+  console.log(serial);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 bg-opacity-50 backdrop-blur-sm">
@@ -294,12 +338,12 @@ const InventoryManageRequestModal = ({
                               <span
                                 onClick={() => {
                                   setEditingIndex(index);
-                                  setTempAmount(item.Amount || "");
+                                  setTempAmount(item.Item_amount || "");
                                 }}
                                 className="cursor-pointer text-blue-600 hover:underline"
                                 title="Click to edit"
                               >
-                                {item.Amount ?? "—"}
+                                {item.Item_amount ?? "—"}
                               </span>
                             )}
                           </td>
@@ -312,11 +356,14 @@ const InventoryManageRequestModal = ({
                         >
                           Total:
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-900">
-                          {itemData.Item_value.reduce(
-                            (a, b) => parseInt(a) + parseInt(b.Amount),
-                            0
-                          )}
+                        <td className="px-4 py-3 text-sm text-gray-900 font-bold">
+                          {(
+                            itemData.Item_value.reduce(
+                              (a, b) =>
+                                parseFloat(a) + parseFloat(b.Item_amount),
+                              0
+                            ) || 0
+                          ).toFixed(2)}
                         </td>
                       </tr>
                     </tbody>
@@ -525,6 +572,119 @@ const InventoryManageRequestModal = ({
                           </button>
                         </div>
                       )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {itemData?.Item_signatories?.filter(
+                (fil) => fil.Status == "Pending"
+              ).length == 0 && (
+                <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <FaBoxOpen className="text-blue-600" />
+                    Assign Items
+                  </h3>
+
+                  <div className="space-y-3">
+                    {itemData.Item_value?.map((data, index) => (
+                      <>
+                        <div
+                          key={index}
+                          className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
+                        >
+                          {/* Item Name */}
+                          <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Item Name
+                            </label>
+                            <input
+                              type="text"
+                              value={data.Item_name}
+                              disabled
+                              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-700 cursor-not-allowed"
+                            />
+                          </div>
+
+                          {/* Item ID Selector */}
+                          <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Assign to Item ID
+                            </label>
+                            <select
+                              onChange={(e) =>
+                                setSelectedItem({
+                                  position: index,
+                                  Item_ID: e.target.value,
+                                })
+                              }
+                              onClick={() =>
+                                get_item_filtered(
+                                  data.Item_category,
+                                  data.Item_subcategory,
+                                  data.Item_classification
+                                )
+                              }
+                              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              defaultValue=""
+                            >
+                              <option value="" disabled>
+                                Select Item ID
+                              </option>
+
+                              {dropDownAssign.map((data) => (
+                                <option value={data.ID}>
+                                  {data.Item_name}
+                                </option>
+                              ))}
+
+                              {/* Add your actual item IDs here */}
+                            </select>
+                          </div>
+                        </div>
+                        <textarea
+                          className="w-full border "
+                          onChange={(e) =>
+                            setSerials({
+                              position: index,
+                              serials: e.target.value,
+                            })
+                          }
+                        />
+                      </>
+                    ))}
+                  </div>
+
+                  {/* Submit Button */}
+                </div>
+              )}
+
+              {itemData.Item_signatories && (
+                <>
+                  <div className="bg-white flex flex-col border border-gray-200 rounded-lg p-5 mb-6 shadow-sm">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                      Uploaded Images
+                    </h3>
+                    {itemData.Item_image == null && (
+                      <span className="text-center w-full p-5">No image</span>
+                    )}
+                    <div className="grid grid-cols-4 gap-3">
+                      {itemData.Item_image?.map((image, index) => (
+                        <div key={index} className="relative group">
+                          <a
+                            href={"/server" + image}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block"
+                          >
+                            <img
+                              src={"/server" + image}
+                              alt={`Image ${index + 1}`}
+                              className="w-full h-24 object-cover rounded-lg border-2 border-gray-200 hover:border-blue-500 transition-colors cursor-pointer"
+                            />
+                          </a>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </>

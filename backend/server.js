@@ -6,6 +6,7 @@ const cors = require("cors");
 const cookies = require("cookie-parser");
 const helmet = require("helmet");
 const errorHandler = require("./middleware/errorHanlder");
+const { protected } = require("./middleware/protect");
 
 //NODE PACKAGE FOR API CONNECTION
 app.use(express.urlencoded({ extended: true }));
@@ -20,6 +21,10 @@ app.use("/users", require("./routes/UserRoute"));
 app.use("/inventory", require("./routes/InventoryRoute"));
 
 app.use(errorHandler);
+
+//ACCESS LOCAL FILES
+
+app.use("/media", express.static("media"));
 
 //SERVER FUNCTION TO START
 db.sequelize.sync().then(() => {

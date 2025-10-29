@@ -370,7 +370,7 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
               type="number"
               value={inputFields.Item_quantity}
               className="w-full px-3 mb-4  py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Description"
+              placeholder="Quantity / Amount"
             />
 
             <button
