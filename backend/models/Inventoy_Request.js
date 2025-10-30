@@ -40,7 +40,7 @@ module.exports = (sequelize, DataTypes) => {
     });
 
     Inventory_Request.hasMany(models.Inventory_Stocks, {
-      foreignKey: "Inv_requestID",
+      foreignKey: { name: "Inv_requestID" },
       as: "Inv_request",
     });
   };

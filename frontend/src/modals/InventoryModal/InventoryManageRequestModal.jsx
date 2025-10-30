@@ -28,7 +28,7 @@ const InventoryManageRequestModal = ({
   const [notes, setNotes] = useState("");
   const [signatoriesSelected, setSignatoriesSelected] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [dropDownAssign, setDropDownAssign] = useState([]);
+  const [dropDownAssign, setDropDownAssign] = useState({});
 
   const axiosPrivate = usePrivateAxios();
 
@@ -177,7 +177,12 @@ const InventoryManageRequestModal = ({
     setEditingIndex(null);
   };
 
-  const get_item_filtered = async (category, subcategory, classification) => {
+  const get_item_filtered = async (
+    category,
+    subcategory,
+    classification,
+    position
+  ) => {
     try {
       const res = await axiosPrivate.get("/inventory/get-filtered-items", {
         params: {
@@ -187,27 +192,116 @@ const InventoryManageRequestModal = ({
         },
       });
 
-      setDropDownAssign(res.data);
+      // Store options for this specific position
+      setDropDownAssign((prev) => ({
+        ...prev,
+        [position]: res.data,
+      }));
     } catch (error) {
       handleApiError(error);
     }
+  };
+
+  const [itemState, setItemState] = useState([]);
+
+  const handleChangeDropDown = (index, itemPicked) => {
+    const findId = itemState.filter((fil) => fil.position == index);
+
+    if (findId.length == 0)
+      setItemState((prev) => [
+        ...prev,
+        { position: index, item_ID: itemPicked, method: 1 },
+      ]);
+
+    const newArray = itemState.filter((fil) => fil.position != index);
+
+    setItemState([
+      ...newArray,
+      { position: index, item_ID: itemPicked, method: 1 },
+    ]);
+  };
+
+  const handleChangeRadio = (index, value) => {
+    const findId = itemState.filter((fil) => fil.position == index)[0];
+
+    const newData = itemState.filter((fil) => fil.position != index);
+
+    if (value == 1) {
+      setItemState([...newData, { ...findId, method: value, inputText: "" }]);
+    }
+
+    if (value == 2) {
+      setItemState([
+        ...newData,
+        { ...findId, method: value, serialStart: 0, serialEnd: 0 },
+      ]);
+    }
+  };
+
+  const handleChangeTextArea = (index, text) => {
+    const findId = itemState.filter((fil) => fil.position == index)[0];
+
+    const newData = itemState.filter((fil) => fil.position != index);
+
+    setItemState([...newData, { ...findId, inputText: text }]);
+  };
+
+  const handleChangeSerial = (index, particulars, value) => {
+    const findId = itemState.filter((fil) => fil.position == index)[0];
+
+    const newData = itemState.filter((fil) => fil.position != index);
+
+    if (particulars == "start")
+      setItemState([...newData, { ...findId, serialStart: value }]);
+
+    if (particulars == "end")
+      setItemState([...newData, { ...findId, serialEnd: value }]);
   };
 
   const ship_items = async (e) => {
-    e, preventDefault();
+    e.preventDefault();
+
+    let temp = [];
 
     try {
-      const res = await axiosPrivate.put("/inventory/ship-items");
+      itemState.forEach((item) => {
+        if (item.method == 1) {
+          const inputTextArray = item.inputText.split(",");
+          inputTextArray.forEach((serials) =>
+            temp.push({ item_ID: item.item_ID, serials: serials.trim() })
+          );
+        }
+
+        if (item.method == 2) {
+          const start = parseInt(item.serialStart);
+          const end = parseInt(item.serialEnd);
+
+          for (let i = start; i <= end; i++) {
+            temp.push({ item_ID: item.item_ID, serials: i });
+          }
+        }
+      });
+
+      const items = {
+        branch: user.Branch,
+        Inv_requestID: itemData.ID,
+        items: temp.map((data) => {
+          return {
+            Item_ID: data.item_ID,
+            Item_serial: data.serials.toString(),
+          };
+        }),
+      };
+      const res = await axiosPrivate.put("/inventory/ship-items", items);
+      console.log(res);
+      alert("Data Updated");
     } catch (error) {
+      console.log(error);
       handleApiError(error);
     }
   };
 
-  const [selectedItem, setSelectedItem] = useState([]);
-  const [serial, setSerials] = useState([]);
-
-  console.log(selectedItem);
-  console.log(serial);
+  console.log(itemData);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 bg-opacity-50 backdrop-blur-sm">
@@ -593,7 +687,7 @@ const InventoryManageRequestModal = ({
                           key={index}
                           className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
                         >
-                          {/* Item Name */}
+                          {/* ASSIGNING OF ITEM */}
                           <div className="flex-1">
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                               Item Name
@@ -613,17 +707,20 @@ const InventoryManageRequestModal = ({
                             </label>
                             <select
                               onChange={(e) =>
-                                setSelectedItem({
-                                  position: index,
-                                  Item_ID: e.target.value,
-                                })
+                                handleChangeDropDown(index, e.target.value)
                               }
                               onClick={() =>
                                 get_item_filtered(
                                   data.Item_category,
                                   data.Item_subcategory,
-                                  data.Item_classification
+                                  data.Item_classification,
+                                  index
                                 )
+                              }
+                              value={
+                                itemState.filter(
+                                  (fil) => fil.position == index
+                                )[0]?.item_ID
                               }
                               className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               defaultValue=""
@@ -632,9 +729,9 @@ const InventoryManageRequestModal = ({
                                 Select Item ID
                               </option>
 
-                              {dropDownAssign.map((data) => (
-                                <option value={data.ID}>
-                                  {data.Item_name}
+                              {(dropDownAssign[index] || []).map((item) => (
+                                <option key={item.ID} value={item.ID}>
+                                  {item.Item_name}
                                 </option>
                               ))}
 
@@ -642,15 +739,112 @@ const InventoryManageRequestModal = ({
                             </select>
                           </div>
                         </div>
-                        <textarea
-                          className="w-full border "
-                          onChange={(e) =>
-                            setSerials({
-                              position: index,
-                              serials: e.target.value,
-                            })
-                          }
-                        />
+                        <div className="flex">
+                          <input
+                            onChange={(e) => handleChangeRadio(index, 1)}
+                            checked={
+                              itemState.filter(
+                                (fil) =>
+                                  fil.method == 1 && fil.position == index
+                              ).length != 0
+                            }
+                            disabled={
+                              itemState.filter((fil) => fil.position == index)
+                                .length == 0
+                            }
+                            type="radio"
+                          />{" "}
+                          <span className="text-sm font-medium text-gray-700 mx-2">
+                            Manual Encoding
+                          </span>
+                          <input
+                            onChange={(e) => handleChangeRadio(index, 2)}
+                            checked={
+                              itemState.filter(
+                                (fil) =>
+                                  fil.method == 2 && fil.position == index
+                              ).length != 0
+                            }
+                            disabled={
+                              itemState.filter((fil) => fil.position == index)
+                                .length == 0
+                            }
+                            type="radio"
+                          />{" "}
+                          <span className="text-sm font-medium text-gray-700 mx-2">
+                            Serial range
+                          </span>
+                        </div>
+
+                        {/* TEXT AREA MANUAL ENCODING */}
+                        {itemState.filter(
+                          (fil) => fil.position == index && fil.method == 1
+                        ).length != 0 && (
+                          <textarea
+                            onChange={(e) =>
+                              handleChangeTextArea(index, e.target.value)
+                            }
+                            value={
+                              itemState.filter(
+                                (fil) =>
+                                  fil.position == index && fil.method == 1
+                              )[0]?.inputText
+                            }
+                            className="w-full border border-gray-300 rounded px-3 py-2 min-h-[100px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                            placeholder="Enter serials..."
+                          />
+                        )}
+
+                        {itemState.filter(
+                          (fil) => fil.position == index && fil.method == 2
+                        ).length != 0 && (
+                          <div className="flex gap-4">
+                            <div className="flex flex-col">
+                              <label className="text-sm font-medium text-gray-700 mb-1">
+                                Serial Start
+                              </label>
+                              <input
+                                onChange={(e) =>
+                                  handleChangeSerial(
+                                    index,
+                                    "start",
+                                    e.target.value
+                                  )
+                                }
+                                value={
+                                  itemState.filter(
+                                    (fil) =>
+                                      fil.position == index && fil.method == 2
+                                  )[0]?.serialStart
+                                }
+                                type="text"
+                                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              />
+                            </div>
+                            <div className="flex flex-col">
+                              <label className="text-sm font-medium text-gray-700 mb-1">
+                                Serial End
+                              </label>
+                              <input
+                                onChange={(e) =>
+                                  handleChangeSerial(
+                                    index,
+                                    "end",
+                                    e.target.value
+                                  )
+                                }
+                                value={
+                                  itemState.filter(
+                                    (fil) =>
+                                      fil.position == index && fil.method == 2
+                                  )[0]?.serialEnd
+                                }
+                                type="text"
+                                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              />
+                            </div>
+                          </div>
+                        )}
                       </>
                     ))}
                   </div>
@@ -827,7 +1021,10 @@ const InventoryManageRequestModal = ({
             {itemData?.Item_signatories?.filter(
               (fil) => fil.Status == "Pending"
             ).length == 0 && (
-              <button className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2">
+              <button
+                onClick={(e) => ship_items(e)}
+                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+              >
                 <MdLocalShipping className="text-xl" />
                 Ready for Shipment
               </button>

@@ -7,7 +7,7 @@ const {
   Users,
   sequelize,
 } = require("../models");
-const { Op } = require("sequelize");
+const { Op, QueryTypes } = require("sequelize");
 const fs = require("fs");
 
 //#region CATEGORY
@@ -611,18 +611,108 @@ const update_request = async (req, res, next) => {
   INVENTORY_STOCKS
 */
 
+// const ship_items = async (req, res, next) => {
+//   const itemData = req.body;
+
+//   try {
+//     const where = {
+//       [Op.or]: itemData.items.map((q) => ({
+//         Item_ID: q.Item_ID,
+//         Item_serial: q.Item_serial,
+//       })),
+//     };
+
+//     const existingRecord = await Inventory_Stocks.findAll({ where });
+
+//     const missing = itemData.items.filter(
+//       (fil) =>
+//         !existingRecord.some(
+//           (som) =>
+//             som.Item_ID == fil.Item_ID && som.Item_serial == fil.Item_serial
+//         )
+//     );
+
+//     if (missing.length != 0) {
+//       return res.status(404).json({
+//         message: `These Items do not exist: ${JSON.stringify(missing)}`,
+//       });
+//     }
+
+//     const statusCases = itemData.items
+//       .map(
+//         (data) =>
+//           `WHEN (Item_ID = ${data.Item_ID} AND Item_serial = ${data.Item_serial}) THEN "Unavailable"`
+//       )
+//       .join(" ");
+
+//     const branchCase = itemData.items
+//       .map(
+//         (data) =>
+//           `WHEN (Item_ID = ${data.Item_ID} AND Item_serial = ${data.Item_serial}) THEN ${itemData.branch}`
+//       )
+//       .join(" ");
+
+//     const requestCase = itemData.items
+//       .map(
+//         (data) =>
+//           `WHEN (Item_ID = ${data.Item_ID} AND Item_serial = ${data.Item_serial}) THEN ${itemData.Inv_requestID}`
+//       )
+//       .join(" ");
+
+//     const replacements = {};
+//     itemData.items.forEach((item) => {
+//       replacements[item.Item_ID] = item.Item_ID;
+//       replacements[item.Item_serial] = item.Item_serial;
+//     });
+
+//     replacements.itemIds = itemData.items.map((d) => d.Item_ID);
+//     replacements.serials = itemData.items.map((d) => d.Item_serial);
+
+//     console.log(itemData);
+
+//     await sequelize.query(
+//       `
+//       UPDATE Inventory_Stocks
+//       SET
+//         Item_status = CASE
+//           ${statusCases}
+//           ELSE Item_status
+//         END,
+//         Item_branch = CASE
+//           ${branchCase}
+//           ELSE Item_branch
+//         END,
+//         Inv_requestID = CASE
+//          ${requestCase}
+//          ELSE Inv_requestID
+//         END
+//       WHERE Item_ID IN (:itemIds)
+//       AND Item_serial IN (:serials)
+//     `,
+//       {
+//         replacements,
+//         type: QueryTypes.UPDATE,
+//       }
+//     );
+
+//     return res.status(200).json(existingRecord);
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
 const ship_items = async (req, res, next) => {
   const itemData = req.body;
 
   try {
     const where = {
-      [Op.and]: itemData.items.map((q) => ({
+      [Op.or]: itemData.items.map((q) => ({
         Item_ID: q.Item_ID,
         Item_serial: q.Item_serial,
       })),
     };
 
-    const existingRecord = await Item_Stocks.findAll({ where });
+    const existingRecord = await Inventory_Stocks.findAll({ where });
 
     const missing = itemData.items.filter(
       (fil) =>
@@ -632,14 +722,82 @@ const ship_items = async (req, res, next) => {
         )
     );
 
-    if (missing) {
+    if (missing.length != 0) {
       return res.status(404).json({
         message: `These Items do not exist: ${JSON.stringify(missing)}`,
       });
     }
 
-    return res.status(200).json(existingRecord);
+    // Build CASE statements with proper named parameters
+    const statusCases = itemData.items
+      .map(
+        (data, index) =>
+          `WHEN ("Item_ID" = :itemId${index} AND "Item_serial" = :serial${index}) THEN :status${index}`
+      )
+      .join(" ");
+
+    const branchCase = itemData.items
+      .map(
+        (data, index) =>
+          `WHEN ("Item_ID" = :itemId${index} AND "Item_serial" = :serial${index}) THEN :branch${index}`
+      )
+      .join(" ");
+
+    const requestCase = itemData.items
+      .map(
+        (data, index) =>
+          `WHEN ("Item_ID" = :itemId${index} AND "Item_serial" = :serial${index}) THEN :request${index}`
+      )
+      .join(" ");
+
+    // Build replacements object - branch and Inv_requestID are same for all items
+    const replacements = {};
+
+    itemData.items.forEach((item, index) => {
+      replacements[`itemId${index}`] = item.Item_ID;
+      replacements[`serial${index}`] = item.Item_serial;
+      replacements[`status${index}`] = "Unavailable";
+      replacements[`branch${index}`] = itemData.branch; // From root level
+      replacements[`request${index}`] = itemData.Inv_requestID; // From root level
+    });
+
+    // Add the IN clause arrays
+    replacements.itemIds = itemData.items.map((d) => d.Item_ID);
+    replacements.serials = itemData.items.map((d) => d.Item_serial);
+
+    console.log("Replacements:", replacements);
+
+    await sequelize.query(
+      `
+      UPDATE "Inventory_Stocks"
+      SET
+        "Item_status" = CASE
+          ${statusCases}
+          ELSE "Item_status"
+        END,
+        "Item_branch" = CASE
+          ${branchCase}
+          ELSE "Item_branch"
+        END,
+        "Inv_requestID" = CASE
+         ${requestCase}
+         ELSE "Inv_requestID"
+        END
+      WHERE "Item_ID" IN (:itemIds)
+      AND "Item_serial" IN (:serials)
+    `,
+      {
+        replacements,
+        type: QueryTypes.UPDATE,
+      }
+    );
+
+    return res.status(200).json({
+      message: "Items shipped successfully",
+      count: itemData.items.length,
+    });
   } catch (error) {
+    console.error("Error in ship_items:", error);
     next(error);
   }
 };
