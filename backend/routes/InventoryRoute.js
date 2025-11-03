@@ -27,6 +27,8 @@ const {
   get_filtered_items,
   upload_image,
   ship_items,
+  get_inventory_shipped_items,
+  item_received,
 } = require("../controller/InventoryController");
 const { uploadSupportingForms } = require("../middleware/multerUploading");
 
@@ -63,5 +65,9 @@ router.put("/update-request", protected, uploadSupportingForms, update_request);
 
 //SHIP ITEMS
 router.put("/ship-items", protected, ship_items);
+router.post("/get-shipped-items", protected, get_inventory_shipped_items);
+
+//RECEIVED ITEM
+router.put("/item-received", protected, item_received);
 
 module.exports = router;

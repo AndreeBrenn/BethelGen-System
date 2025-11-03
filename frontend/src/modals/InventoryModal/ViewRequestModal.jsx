@@ -8,24 +8,33 @@ import {
   FaCalendarAlt,
   FaMapMarkerAlt,
   FaClipboardList,
+  FaTruck,
 } from "react-icons/fa";
 import { MdPending } from "react-icons/md";
+import { decodedUser } from "../../utils/GlobalVariables";
+import { handleApiError } from "../../utils/HandleError";
+import usePrivateAxios from "../../hooks/useProtectedAxios";
+import { data } from "react-router-dom";
 
 const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
   // Sample data structure - replace with your actual data
 
   const data = requestData || sampleData;
 
+  const axiosPrivate = usePrivateAxios();
+
   const getStatusIcon = (status) => {
     switch (status) {
-      case "approved":
+      case "Approved":
         return <FaCheckCircle className="text-green-500 text-2xl" />;
-      case "rejected":
+      case "Rejected":
         return <FaTimesCircle className="text-red-500 text-2xl" />;
-      case "pending":
+      case "Pending":
         return <MdPending className="text-yellow-500 text-2xl" />;
-      case "submitted":
+      case "Submitted":
         return <FaCheckCircle className="text-blue-500 text-2xl" />;
+      case "Shipped":
+        return <FaTruck className="text-blue-500 text-2xl" />;
       default:
         return <FaClock className="text-gray-400 text-2xl" />;
     }
@@ -33,13 +42,15 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case "approved":
+      case "Approved":
         return "bg-green-50 border-green-200";
-      case "rejected":
+      case "Rejected":
         return "bg-red-50 border-red-200";
-      case "pending":
+      case "Pending":
         return "bg-yellow-50 border-yellow-200";
-      case "submitted":
+      case "Submitted":
+        return "bg-blue-50 border-blue-200";
+      case "Shipped":
         return "bg-blue-50 border-blue-200";
       default:
         return "bg-gray-50 border-gray-200";
@@ -48,10 +59,11 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
 
   const getStatusBadge = (status) => {
     const colors = {
-      approved: "bg-green-100 text-green-800",
-      rejected: "bg-red-100 text-red-800",
-      pending: "bg-yellow-100 text-yellow-800",
-      submitted: "bg-blue-100 text-blue-800",
+      Approved: "bg-green-100 text-green-800",
+      Rejected: "bg-red-100 text-red-800",
+      Pending: "bg-yellow-100 text-yellow-800",
+      Submitted: "bg-blue-100 text-blue-800",
+      Shipped: "bg-blue-100 text-blue-800",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
   };
@@ -66,6 +78,21 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const receivedItem = async (e) => {
+    e.preventDefault();
+
+    try {
+      const res = await axiosPrivate.put("/inventory/item-received", {
+        status: "Received",
+        ID: data.ID,
+      });
+
+      alert("Item Received");
+    } catch (error) {
+      handleApiError(error);
+    }
   };
 
   return (
@@ -201,19 +228,19 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
                 <div className="relative flex gap-4">
                   {/* Icon */}
                   <div className="relative z-10 flex-shrink-0">
-                    {getStatusIcon("submitted")}
+                    {getStatusIcon("Submitted")}
                   </div>
 
                   {/* Content */}
                   <div
                     className={`flex-1 border rounded-lg p-4 ${getStatusColor(
-                      "submitted"
+                      "Submitted"
                     )}`}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <h4 className="font-semibold text-gray-900 text-base">
-                          {data.Item_userID.Role}
+                          {data.Item_userID.Position}
                         </h4>
                         <div className="flex items-center gap-2 mt-1">
                           <FaUser className="text-gray-500 text-sm" />
@@ -226,7 +253,7 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
                       </div>
                       <span
                         className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${getStatusBadge(
-                          "submitted"
+                          "Submitted"
                         )}`}
                       >
                         Submitted
@@ -244,46 +271,46 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
                   <div key={index} className="relative flex gap-4">
                     {/* Icon */}
                     <div className="relative z-10 flex-shrink-0">
-                      {getStatusIcon(signatory.status)}
+                      {getStatusIcon(signatory.Status)}
                     </div>
 
                     {/* Content */}
                     <div
                       className={`flex-1 border rounded-lg p-4 ${getStatusColor(
-                        signatory.status
+                        signatory.Status
                       )}`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <h4 className="font-semibold text-gray-900 text-base">
-                            {signatory.role}
+                            {signatory.Position}
                           </h4>
                           <div className="flex items-center gap-2 mt-1">
                             <FaUser className="text-gray-500 text-sm" />
                             <p className="text-sm text-gray-700">
-                              {signatory.name}
+                              {signatory.Name}
                             </p>
                           </div>
                         </div>
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${getStatusBadge(
-                            signatory.status
+                            signatory.Status
                           )}`}
                         >
-                          {signatory.status}
+                          {signatory.Status}
                         </span>
                       </div>
 
                       <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
                         <FaCalendarAlt className="text-gray-500" />
-                        <span>{formatDate(signatory.date)}</span>
+                        <span>{formatDate(signatory.Date)}</span>
                       </div>
 
-                      {signatory.remarks && (
+                      {signatory.note && (
                         <div className="mt-3 pt-3 border-t border-gray-200">
                           <p className="text-sm text-gray-600">
                             <span className="font-medium">Remarks: </span>
-                            {signatory.remarks}
+                            {signatory.note}
                           </p>
                         </div>
                       )}
@@ -303,6 +330,14 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
           >
             Close
           </button>
+          {data.Item_status != "Received" && data.Item_status == "Shipped" && (
+            <button
+              onClick={(e) => receivedItem(e)}
+              className="px-6 py-2 ml-3 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+            >
+              Received
+            </button>
+          )}
         </div>
       </div>
     </div>

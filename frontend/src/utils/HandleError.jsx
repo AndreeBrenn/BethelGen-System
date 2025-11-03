@@ -1,3 +1,5 @@
+import { toast } from "react-toastify";
+
 export const handleApiError = (error) => {
   if (error.response) {
     // Server responded with error
@@ -5,19 +7,46 @@ export const handleApiError = (error) => {
 
     if (data.errors && data.errors.length > 0) {
       // Multiple validation errors
-      const errorMessages = data.errors
-        .map((e) => `${e.field}: ${e.message}`)
-        .join("\n");
-      alert(errorMessages);
+      data.errors.forEach((e) => {
+        toast.error(`${e.field}: ${e.message}`, {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+      });
     } else {
       // Single error message
-      alert(data.message || "Something went wrong");
+      toast.error(data.message || "Something went wrong", {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
     }
   } else if (error.request) {
     // Request made but no response
-    alert("Network error. Please check your connection.");
+    toast.error("Network error. Please check your connection.", {
+      position: "top-right",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+    });
   } else {
     // Something else happened
-    alert("An error occurred. Please try again.");
+    toast.error("An error occurred. Please try again.", {
+      position: "top-right",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+    });
   }
 };

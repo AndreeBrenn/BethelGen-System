@@ -9,12 +9,14 @@ import {
   FaCheckCircle,
   FaClock,
   FaBoxOpen,
+  FaTruck,
 } from "react-icons/fa";
 import moment from "moment";
 import { handleApiError } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import { decodedUser } from "../../utils/GlobalVariables";
 import { MdLocalShipping } from "react-icons/md";
+import { toast } from "react-toastify";
 
 const InventoryManageRequestModal = ({
   requestData,
@@ -29,6 +31,8 @@ const InventoryManageRequestModal = ({
   const [signatoriesSelected, setSignatoriesSelected] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [dropDownAssign, setDropDownAssign] = useState({});
+  const [errors, setErrors] = useState(null);
+  const [inventory, setInventory] = useState([]);
 
   const axiosPrivate = usePrivateAxios();
 
@@ -50,6 +54,7 @@ const InventoryManageRequestModal = ({
       userApprover.Status != "Approved"
     )
       return true;
+    if (itemData.Item_status == "Shipped") return false;
 
     return false;
   };
@@ -64,8 +69,20 @@ const InventoryManageRequestModal = ({
     }
   }, []);
 
+  const get_shipped_items = useCallback(async () => {
+    try {
+      const res = await axiosPrivate.post("/inventory/get-shipped-items", {
+        ids: [...new Set(itemData.Inv_request.map((data) => data.Item_ID))],
+      });
+
+      setInventory(res.data);
+    } catch (error) {
+      handleApiError(error);
+    }
+  });
   useEffect(() => {
     get_all_users();
+    if (itemData.Item_status == "Shipped") get_shipped_items();
   }, []);
 
   const update_request = async (e) => {
@@ -118,6 +135,9 @@ const InventoryManageRequestModal = ({
       const newSignatory = itemData.Item_signatories.filter(
         (fil) => fil.ID != user.ID
       );
+      const prevSignatory = itemData.Item_signatories.filter(
+        (fil) => fil.ID == user.ID
+      );
 
       const data = {
         ID: itemData.ID,
@@ -126,14 +146,13 @@ const InventoryManageRequestModal = ({
           ...newSignatory,
           {
             Name: user.FirstName + " " + user.LastName,
-
             ID: user.ID,
             Role: user.Role,
             Position: user.Position,
             Status: "Approved",
             Date: moment(),
             note: notes,
-            Order: newSignatory[0].Order,
+            Order: prevSignatory[0].Order,
           },
         ],
       };
@@ -204,20 +223,20 @@ const InventoryManageRequestModal = ({
 
   const [itemState, setItemState] = useState([]);
 
-  const handleChangeDropDown = (index, itemPicked) => {
+  const handleChangeDropDown = (index, itemPicked, itemName) => {
     const findId = itemState.filter((fil) => fil.position == index);
 
     if (findId.length == 0)
       setItemState((prev) => [
         ...prev,
-        { position: index, item_ID: itemPicked, method: 1 },
+        { position: index, item_ID: itemPicked, method: 1, itemName },
       ]);
 
     const newArray = itemState.filter((fil) => fil.position != index);
 
     setItemState([
       ...newArray,
-      { position: index, item_ID: itemPicked, method: 1 },
+      { position: index, item_ID: itemPicked, method: 1, itemName },
     ]);
   };
 
@@ -258,12 +277,135 @@ const InventoryManageRequestModal = ({
       setItemState([...newData, { ...findId, serialEnd: value }]);
   };
 
+  const countQuantity = (index, quantityData) => {
+    const item = itemState.find((item) => item.position === index);
+
+    if (!item) {
+      return {
+        count: 0,
+        quantity: quantityData,
+        status: "insufficient",
+        message: `0/${quantityData} - Insufficient`,
+        isValid: false,
+      };
+    }
+
+    let count = 0;
+    let isValid = true;
+    let status = "insufficient";
+    let message = "";
+
+    if (item.method === 1 && item.inputText) {
+      const inputTextArray = item.inputText
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      count = inputTextArray.length;
+    }
+
+    if (item.method === 2) {
+      if (!item.serialStart || !item.serialEnd) {
+        return {
+          count: 0,
+          quantity: quantityData,
+          status: "invalid",
+          message: `0/${quantityData} - Invalid range`,
+          isValid: false,
+        };
+      }
+
+      const start = parseInt(item.serialStart);
+      const end = parseInt(item.serialEnd);
+
+      // Check if invalid range
+      if (isNaN(start) || isNaN(end)) {
+        return {
+          count: 0,
+          quantity: quantityData,
+          status: "invalid",
+          message: `0/${quantityData} - Invalid numbers`,
+          isValid: false,
+        };
+      }
+
+      if (end < start) {
+        return {
+          count: 0,
+          quantity: quantityData,
+          status: "invalid",
+          message: `${start}-${end}/${quantityData} - Invalid range (end < start)`,
+          isValid: false,
+        };
+      }
+
+      count = end - start + 1;
+    }
+
+    // Determine status based on count vs quantity
+    if (count < quantityData) {
+      status = "insufficient";
+      message = `${count}/${quantityData} - Insufficient`;
+      isValid = false;
+    } else if (count > quantityData) {
+      status = "excess";
+      message = `${count}/${quantityData} - Excess`;
+      isValid = false;
+    } else {
+      status = "exact";
+      message = `${count}/${quantityData} - Complete`;
+      isValid = true;
+    }
+
+    return {
+      count,
+      quantity: quantityData,
+      status,
+      message,
+      isValid,
+    };
+  };
+
   const ship_items = async (e) => {
     e.preventDefault();
 
     let temp = [];
+    let validationErrors = [];
 
     try {
+      // Validate quantities before processing
+      itemData.Item_value?.forEach((data, index) => {
+        const result = countQuantity(index, data.Item_quantity);
+
+        if (!result.isValid) {
+          validationErrors.push({
+            itemName: data.Item_name,
+            message: result.message,
+            status: result.status,
+          });
+        }
+      });
+
+      // If there are validation errors, stop and show them
+      if (validationErrors.length > 0) {
+        const errorMessages = validationErrors
+          .map((err) => `${err.itemName}: ${err.message}`)
+          .join("\n");
+
+        toast.error(
+          `Cannot ship items. Please fix the following:\n\n${errorMessages}`,
+          {
+            position: "top-right",
+            autoClose: 5000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          }
+        );
+        return;
+      }
+
+      // Process items if validation passes
       itemState.forEach((item) => {
         if (item.method == 1) {
           const inputTextArray = item.inputText.split(",");
@@ -283,7 +425,20 @@ const InventoryManageRequestModal = ({
       });
 
       const items = {
-        branch: user.Branch,
+        Item_signatories: [
+          ...itemData.Item_signatories,
+          {
+            ID: user.ID,
+            Date: moment(),
+            Name: user.FirstName + " " + user.LastName,
+            Role: user.Role,
+            note: notes,
+            Order: itemData.Item_signatories.length,
+            Status: "Shipped",
+            Position: user.Position,
+          },
+        ],
+        branch: itemData.Item_branch,
         Inv_requestID: itemData.ID,
         items: temp.map((data) => {
           return {
@@ -292,17 +447,36 @@ const InventoryManageRequestModal = ({
           };
         }),
       };
+
       const res = await axiosPrivate.put("/inventory/ship-items", items);
       console.log(res);
-      alert("Data Updated");
+      alert("Data Updated Successfully!");
     } catch (error) {
       console.log(error);
       handleApiError(error);
+      if (
+        error.status == 404 &&
+        error.response.data.message?.includes("exist")
+      ) {
+        setErrors({
+          message: "These Items don't exist",
+          items: error.response.data.items,
+        });
+      }
+
+      if (
+        error.status == 400 &&
+        error.response.data.message?.includes("unavailable")
+      ) {
+        setErrors({
+          message: "These Items are unavailable",
+          items: error.response.data.items,
+        });
+      }
     }
   };
 
-  console.log(itemData);
-
+  console.log(inventory);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 bg-opacity-50 backdrop-blur-sm">
       <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -334,7 +508,19 @@ const InventoryManageRequestModal = ({
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Status</p>
-                    <span className="inline-block px-3 py-1 text-sm font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                    <span
+                      className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${
+                        itemData?.Item_status == "Pending"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : itemData?.Item_status == "Shipped"
+                          ? "bg-blue-100 text-blue-800"
+                          : itemData?.Item_status == "Rejected"
+                          ? "bg-red-100 text-red-800"
+                          : itemData?.Item_status == "Done"
+                          ? "bg-green-100 text-green-800"
+                          : ""
+                      } `}
+                    >
                       {itemData?.Item_status}
                     </span>
                   </div>
@@ -464,6 +650,66 @@ const InventoryManageRequestModal = ({
                   </table>
                 </div>
               </div>
+
+              {/* SHIPPED ITEMS */}
+              {itemData.Item_status == "Shipped" ||
+                (itemData.Item_status == "Received" && (
+                  <div className="bg-white border border-gray-200 rounded-lg p-5 mb-6 shadow-sm">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <FaTruck className="text-blue-600" />
+                      Shipped Items
+                    </h3>
+                    <div className="overflow-x-auto max-h-[12rem] overflow-y-auto border border-gray-200 rounded-lg">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50 sticky top-0 z-10">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              #
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Item Name
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Serial Number
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Branch
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {itemData.Inv_request.map((data, index) => (
+                            <tr key={index} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 text-sm text-gray-500">
+                                {index + 1}
+                              </td>
+                              <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                                {inventory.filter(
+                                  (fil) => fil.ID == data.Item_ID
+                                )[0]?.Item_name || "Unknown item"}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-700">
+                                <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono">
+                                  {data.Item_serial}
+                                </code>
+                              </td>
+                              <td className="px-4 py-3 text-sm">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  {data.Item_branch}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="mt-3 px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <span className="text-sm font-medium text-gray-700">
+                        Total Items: {itemData.Inv_request.length}
+                      </span>
+                    </div>
+                  </div>
+                ))}
 
               {/* Assign Signatories */}
               {!itemData.Item_signatories && (
@@ -671,187 +917,276 @@ const InventoryManageRequestModal = ({
                 </>
               )}
 
+              {/* ASSIGNING OF ITEMS */}
               {itemData?.Item_signatories?.filter(
                 (fil) => fil.Status == "Pending"
-              ).length == 0 && (
-                <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <FaBoxOpen className="text-blue-600" />
-                    Assign Items
-                  </h3>
+              ).length == 0 &&
+                itemData.Item_status != "Shipped" &&
+                itemData.Item_status != "Received" && (
+                  <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <FaBoxOpen className="text-blue-600" />
+                      Assign Items
+                    </h3>
+                    <div className="space-y-3">
+                      {itemData.Item_value?.map((data, index) => (
+                        <>
+                          <div
+                            key={index}
+                            className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
+                          >
+                            {/* ASSIGNING OF ITEM */}
+                            <div className="flex-1">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Item Name
+                              </label>
+                              <input
+                                type="text"
+                                value={data.Item_name}
+                                disabled
+                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-700 cursor-not-allowed"
+                              />
+                            </div>
 
-                  <div className="space-y-3">
-                    {itemData.Item_value?.map((data, index) => (
-                      <>
-                        <div
-                          key={index}
-                          className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
-                        >
-                          {/* ASSIGNING OF ITEM */}
-                          <div className="flex-1">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Item Name
-                            </label>
+                            {/* Item ID Selector */}
+                            <div className="flex-1">
+                              <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Assign to Item ID
+                              </label>
+                              <select
+                                onChange={(e) =>
+                                  handleChangeDropDown(
+                                    index,
+                                    e.target.value,
+                                    e.target.selectedOptions[0].dataset.itemname
+                                  )
+                                }
+                                onClick={() =>
+                                  get_item_filtered(
+                                    data.Item_category,
+                                    data.Item_subcategory,
+                                    data.Item_classification,
+                                    index
+                                  )
+                                }
+                                value={
+                                  itemState.filter(
+                                    (fil) => fil.position == index
+                                  )[0]?.item_ID
+                                }
+                                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                defaultValue=""
+                              >
+                                <option value="" disabled>
+                                  Select Item ID
+                                </option>
+
+                                {(dropDownAssign[index] || []).map((item) => (
+                                  <option
+                                    key={item.ID}
+                                    value={item.ID}
+                                    data-itemname={item.Item_name}
+                                  >
+                                    {item.Item_name}
+                                  </option>
+                                ))}
+
+                                {/* Add your actual item IDs here */}
+                              </select>
+                            </div>
+                          </div>
+                          <div className="flex">
                             <input
-                              type="text"
-                              value={data.Item_name}
-                              disabled
-                              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-700 cursor-not-allowed"
-                            />
+                              onChange={(e) => handleChangeRadio(index, 1)}
+                              checked={
+                                itemState.filter(
+                                  (fil) =>
+                                    fil.method == 1 && fil.position == index
+                                ).length != 0
+                              }
+                              disabled={
+                                itemState.filter((fil) => fil.position == index)
+                                  .length == 0
+                              }
+                              type="radio"
+                            />{" "}
+                            <span className="text-sm font-medium text-gray-700 mx-2">
+                              Manual Encoding
+                            </span>
+                            <input
+                              onChange={(e) => handleChangeRadio(index, 2)}
+                              checked={
+                                itemState.filter(
+                                  (fil) =>
+                                    fil.method == 2 && fil.position == index
+                                ).length != 0
+                              }
+                              disabled={
+                                itemState.filter((fil) => fil.position == index)
+                                  .length == 0
+                              }
+                              type="radio"
+                            />{" "}
+                            <span className="text-sm font-medium text-gray-700 mx-2">
+                              Serial range
+                            </span>
                           </div>
 
-                          {/* Item ID Selector */}
-                          <div className="flex-1">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Assign to Item ID
-                            </label>
-                            <select
+                          {/* TEXT AREA MANUAL ENCODING */}
+                          {itemState.filter(
+                            (fil) => fil.position == index && fil.method == 1
+                          ).length != 0 && (
+                            <textarea
                               onChange={(e) =>
-                                handleChangeDropDown(index, e.target.value)
-                              }
-                              onClick={() =>
-                                get_item_filtered(
-                                  data.Item_category,
-                                  data.Item_subcategory,
-                                  data.Item_classification,
-                                  index
-                                )
+                                handleChangeTextArea(index, e.target.value)
                               }
                               value={
                                 itemState.filter(
-                                  (fil) => fil.position == index
-                                )[0]?.item_ID
+                                  (fil) =>
+                                    fil.position == index && fil.method == 1
+                                )[0]?.inputText
                               }
-                              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              defaultValue=""
+                              className="w-full border border-gray-300 rounded px-3 py-2 min-h-[100px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                              placeholder="Enter serials..."
+                            />
+                          )}
+
+                          {itemState.filter(
+                            (fil) => fil.position == index && fil.method == 2
+                          ).length != 0 && (
+                            <div className="flex gap-4">
+                              <div className="flex flex-col">
+                                <label className="text-sm font-medium text-gray-700 mb-1">
+                                  Serial Start
+                                </label>
+                                <input
+                                  onChange={(e) =>
+                                    handleChangeSerial(
+                                      index,
+                                      "start",
+                                      e.target.value
+                                    )
+                                  }
+                                  value={
+                                    itemState.filter(
+                                      (fil) =>
+                                        fil.position == index && fil.method == 2
+                                    )[0]?.serialStart
+                                  }
+                                  type="text"
+                                  className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                              </div>
+                              <div className="flex flex-col">
+                                <label className="text-sm font-medium text-gray-700 mb-1">
+                                  Serial End
+                                </label>
+                                <input
+                                  onChange={(e) =>
+                                    handleChangeSerial(
+                                      index,
+                                      "end",
+                                      e.target.value
+                                    )
+                                  }
+                                  value={
+                                    itemState.filter(
+                                      (fil) =>
+                                        fil.position == index && fil.method == 2
+                                    )[0]?.serialEnd
+                                  }
+                                  type="text"
+                                  className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                />
+                              </div>
+                            </div>
+                          )}
+                          <div>
+                            {(() => {
+                              const result = countQuantity(
+                                index,
+                                data.Item_quantity
+                              );
+                              return (
+                                <span
+                                  className={`font-medium ${
+                                    result.status === "exact"
+                                      ? "text-green-600"
+                                      : result.status === "insufficient"
+                                      ? "text-yellow-600"
+                                      : result.status === "excess"
+                                      ? "text-orange-600"
+                                      : "text-red-600"
+                                  }`}
+                                >
+                                  {result.message}
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        </>
+                      ))}
+                    </div>
+                    {errors && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-6">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0">
+                            <svg
+                              className="w-5 h-5 text-red-600 mt-0.5"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
                             >
-                              <option value="" disabled>
-                                Select Item ID
-                              </option>
-
-                              {(dropDownAssign[index] || []).map((item) => (
-                                <option key={item.ID} value={item.ID}>
-                                  {item.Item_name}
-                                </option>
+                              <path
+                                fillRule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-semibold text-red-800 mb-2">
+                              {errors.message}
+                            </h4>
+                            <div className="space-y-2">
+                              {errors.items.map((data, index) => (
+                                <div
+                                  key={index}
+                                  className="bg-white border border-red-200 rounded-md p-3"
+                                >
+                                  <div className="flex items-center justify-between flex-wrap gap-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-medium text-red-700 bg-red-100 px-2 py-1 rounded">
+                                        Item
+                                      </span>
+                                      <span className="text-sm font-medium text-gray-900">
+                                        {itemState.filter(
+                                          (fil) => fil.item_ID == data.Item_ID
+                                        )[0]?.itemName || "Unknown Item"}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                                        Serial
+                                      </span>
+                                      <span className="text-sm font-mono text-gray-900">
+                                        {data.Item_serial}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {data.message && (
+                                    <p className="text-xs text-red-600 mt-2">
+                                      {data.message}
+                                    </p>
+                                  )}
+                                </div>
                               ))}
-
-                              {/* Add your actual item IDs here */}
-                            </select>
-                          </div>
-                        </div>
-                        <div className="flex">
-                          <input
-                            onChange={(e) => handleChangeRadio(index, 1)}
-                            checked={
-                              itemState.filter(
-                                (fil) =>
-                                  fil.method == 1 && fil.position == index
-                              ).length != 0
-                            }
-                            disabled={
-                              itemState.filter((fil) => fil.position == index)
-                                .length == 0
-                            }
-                            type="radio"
-                          />{" "}
-                          <span className="text-sm font-medium text-gray-700 mx-2">
-                            Manual Encoding
-                          </span>
-                          <input
-                            onChange={(e) => handleChangeRadio(index, 2)}
-                            checked={
-                              itemState.filter(
-                                (fil) =>
-                                  fil.method == 2 && fil.position == index
-                              ).length != 0
-                            }
-                            disabled={
-                              itemState.filter((fil) => fil.position == index)
-                                .length == 0
-                            }
-                            type="radio"
-                          />{" "}
-                          <span className="text-sm font-medium text-gray-700 mx-2">
-                            Serial range
-                          </span>
-                        </div>
-
-                        {/* TEXT AREA MANUAL ENCODING */}
-                        {itemState.filter(
-                          (fil) => fil.position == index && fil.method == 1
-                        ).length != 0 && (
-                          <textarea
-                            onChange={(e) =>
-                              handleChangeTextArea(index, e.target.value)
-                            }
-                            value={
-                              itemState.filter(
-                                (fil) =>
-                                  fil.position == index && fil.method == 1
-                              )[0]?.inputText
-                            }
-                            className="w-full border border-gray-300 rounded px-3 py-2 min-h-[100px] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
-                            placeholder="Enter serials..."
-                          />
-                        )}
-
-                        {itemState.filter(
-                          (fil) => fil.position == index && fil.method == 2
-                        ).length != 0 && (
-                          <div className="flex gap-4">
-                            <div className="flex flex-col">
-                              <label className="text-sm font-medium text-gray-700 mb-1">
-                                Serial Start
-                              </label>
-                              <input
-                                onChange={(e) =>
-                                  handleChangeSerial(
-                                    index,
-                                    "start",
-                                    e.target.value
-                                  )
-                                }
-                                value={
-                                  itemState.filter(
-                                    (fil) =>
-                                      fil.position == index && fil.method == 2
-                                  )[0]?.serialStart
-                                }
-                                type="text"
-                                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              />
-                            </div>
-                            <div className="flex flex-col">
-                              <label className="text-sm font-medium text-gray-700 mb-1">
-                                Serial End
-                              </label>
-                              <input
-                                onChange={(e) =>
-                                  handleChangeSerial(
-                                    index,
-                                    "end",
-                                    e.target.value
-                                  )
-                                }
-                                value={
-                                  itemState.filter(
-                                    (fil) =>
-                                      fil.position == index && fil.method == 2
-                                  )[0]?.serialEnd
-                                }
-                                type="text"
-                                className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              />
                             </div>
                           </div>
-                        )}
-                      </>
-                    ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-
-                  {/* Submit Button */}
-                </div>
-              )}
+                )}
 
               {itemData.Item_signatories && (
                 <>
@@ -943,17 +1278,21 @@ const InventoryManageRequestModal = ({
                   {itemData.Item_signatories?.sort(
                     (a, b) => a?.Order - b?.Order
                   ).map((item, index) => (
-                    <div key={item.ID} className="flex gap-3">
+                    <div key={index} className="flex gap-3">
                       <div className="flex flex-col items-center">
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center ${
                             item.Status == "Approved"
                               ? "bg-green-500 text-white"
+                              : item.Status == "Shipped"
+                              ? "bg-blue-600 text-white"
                               : "bg-gray-300 text-gray-600"
                           }`}
                         >
                           {item.Status == "Approved" ? (
                             <FaCheckCircle />
+                          ) : item.Status == "Shipped" ? (
+                            <FaTruck />
                           ) : (
                             <FaClock />
                           )}
@@ -963,6 +1302,8 @@ const InventoryManageRequestModal = ({
                           className={`w-0.5 h-16 ${
                             item.Status == "Approved"
                               ? "bg-green-500"
+                              : item.Status == "Shipped"
+                              ? "bg-blue-500"
                               : "bg-gray-300"
                           }`}
                         />
@@ -1020,15 +1361,17 @@ const InventoryManageRequestModal = ({
 
             {itemData?.Item_signatories?.filter(
               (fil) => fil.Status == "Pending"
-            ).length == 0 && (
-              <button
-                onClick={(e) => ship_items(e)}
-                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
-              >
-                <MdLocalShipping className="text-xl" />
-                Ready for Shipment
-              </button>
-            )}
+            ).length == 0 &&
+              itemData.Item_status != "Shipped" &&
+              itemData.Item_status != "Received" && (
+                <button
+                  onClick={(e) => ship_items(e)}
+                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+                >
+                  <MdLocalShipping className="text-xl" />
+                  Ready for Shipment
+                </button>
+              )}
           </div>
         </div>
       </div>

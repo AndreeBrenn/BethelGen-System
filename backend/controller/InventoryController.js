@@ -466,7 +466,14 @@ const get_inventory_request_personal = async (req, res, next) => {
         {
           model: Users,
           as: "Item_userID",
-          attributes: ["LastName", "FirstName", "Role", "Email", "Department"],
+          attributes: [
+            "LastName",
+            "FirstName",
+            "Role",
+            "Email",
+            "Department",
+            "Position",
+          ],
         },
       ],
       where: whereClause,
@@ -511,7 +518,33 @@ const get_all_request = async (req, res, next) => {
   const { search, offset, limit } = req.query;
 
   try {
-    const result = await Inventory_Request.findAndCountAll({
+    const whereClause = {
+      ...(search && {
+        [Op.or]: [
+          { Item_name: { [Op.iLike]: `%${search}%` } },
+          { Item_branch: { [Op.iLike]: `%${search}%` } },
+          { "$Item_userID.FirstName$": { [Op.iLike]: `%${search}%` } },
+          { "$Item_userID.LastName$": { [Op.iLike]: `%${search}%` } },
+        ],
+      }),
+    };
+
+    // Get count
+    const count = await Inventory_Request.count({
+      include: [
+        {
+          model: Users,
+          as: "Item_userID",
+          attributes: [],
+        },
+      ],
+      where: whereClause,
+      distinct: true,
+      col: "ID",
+    });
+
+    // Get rows
+    const rows = await Inventory_Request.findAll({
       include: [
         {
           model: Users,
@@ -523,23 +556,13 @@ const get_all_request = async (req, res, next) => {
           as: "Inv_request",
         },
       ],
-      where: {
-        ...(search && {
-          [Op.or]: [
-            // Changed from object to array
-            { Item_name: { [Op.iLike]: `%${search}%` } },
-            { Item_branch: { [Op.iLike]: `%${search}%` } },
-            { "$Item_userID.FirstName$": { [Op.iLike]: `%${search}%` } },
-            { "$Item_userID.LastName$": { [Op.iLike]: `%${search}%` } },
-          ],
-        }),
-      },
-      subQuery: false,
-      distinct: true,
+      where: whereClause,
       limit,
       offset,
-      order: ["ID"],
+      order: [["ID", "DESC"]],
     });
+
+    const result = { count, rows };
 
     return res.status(200).json(result);
   } catch (error) {
@@ -601,6 +624,21 @@ const update_request = async (req, res, next) => {
   }
 };
 
+const item_received = async (req, res, next) => {
+  const itemData = req.body;
+
+  try {
+    const result = await Inventory_Request.update(
+      { Item_status: itemData.status },
+      { where: { ID: itemData.ID } }
+    );
+
+    return res.status(200).json({ message: "Data updated" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 //#endregion
 
 //#region SHIPMENT
@@ -611,108 +649,35 @@ const update_request = async (req, res, next) => {
   INVENTORY_STOCKS
 */
 
-// const ship_items = async (req, res, next) => {
-//   const itemData = req.body;
+const get_inventory_shipped_items = async (req, res, next) => {
+  const itemData = req.body;
 
-//   try {
-//     const where = {
-//       [Op.or]: itemData.items.map((q) => ({
-//         Item_ID: q.Item_ID,
-//         Item_serial: q.Item_serial,
-//       })),
-//     };
+  try {
+    const result = await Inventory_Item.findAll({
+      where: {
+        ID: {
+          [Op.in]: itemData.ids,
+        },
+      },
+    });
 
-//     const existingRecord = await Inventory_Stocks.findAll({ where });
-
-//     const missing = itemData.items.filter(
-//       (fil) =>
-//         !existingRecord.some(
-//           (som) =>
-//             som.Item_ID == fil.Item_ID && som.Item_serial == fil.Item_serial
-//         )
-//     );
-
-//     if (missing.length != 0) {
-//       return res.status(404).json({
-//         message: `These Items do not exist: ${JSON.stringify(missing)}`,
-//       });
-//     }
-
-//     const statusCases = itemData.items
-//       .map(
-//         (data) =>
-//           `WHEN (Item_ID = ${data.Item_ID} AND Item_serial = ${data.Item_serial}) THEN "Unavailable"`
-//       )
-//       .join(" ");
-
-//     const branchCase = itemData.items
-//       .map(
-//         (data) =>
-//           `WHEN (Item_ID = ${data.Item_ID} AND Item_serial = ${data.Item_serial}) THEN ${itemData.branch}`
-//       )
-//       .join(" ");
-
-//     const requestCase = itemData.items
-//       .map(
-//         (data) =>
-//           `WHEN (Item_ID = ${data.Item_ID} AND Item_serial = ${data.Item_serial}) THEN ${itemData.Inv_requestID}`
-//       )
-//       .join(" ");
-
-//     const replacements = {};
-//     itemData.items.forEach((item) => {
-//       replacements[item.Item_ID] = item.Item_ID;
-//       replacements[item.Item_serial] = item.Item_serial;
-//     });
-
-//     replacements.itemIds = itemData.items.map((d) => d.Item_ID);
-//     replacements.serials = itemData.items.map((d) => d.Item_serial);
-
-//     console.log(itemData);
-
-//     await sequelize.query(
-//       `
-//       UPDATE Inventory_Stocks
-//       SET
-//         Item_status = CASE
-//           ${statusCases}
-//           ELSE Item_status
-//         END,
-//         Item_branch = CASE
-//           ${branchCase}
-//           ELSE Item_branch
-//         END,
-//         Inv_requestID = CASE
-//          ${requestCase}
-//          ELSE Inv_requestID
-//         END
-//       WHERE Item_ID IN (:itemIds)
-//       AND Item_serial IN (:serials)
-//     `,
-//       {
-//         replacements,
-//         type: QueryTypes.UPDATE,
-//       }
-//     );
-
-//     return res.status(200).json(existingRecord);
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
 const ship_items = async (req, res, next) => {
   const itemData = req.body;
 
   try {
-    const where = {
+    const whereNotExisting = {
       [Op.or]: itemData.items.map((q) => ({
         Item_ID: q.Item_ID,
         Item_serial: q.Item_serial,
       })),
     };
 
-    const existingRecord = await Inventory_Stocks.findAll({ where });
+    const existingRecord = await Inventory_Stocks.findAll({ whereNotExisting });
 
     const missing = itemData.items.filter(
       (fil) =>
@@ -724,7 +689,24 @@ const ship_items = async (req, res, next) => {
 
     if (missing.length != 0) {
       return res.status(404).json({
-        message: `These Items do not exist: ${JSON.stringify(missing)}`,
+        message: `Some Items do not exist`,
+        items: missing,
+      });
+    }
+
+    const unavailable = itemData.items.filter((fil) =>
+      existingRecord.some(
+        (som) =>
+          som.Item_ID == fil.Item_ID &&
+          som.Item_serial == fil.Item_serial &&
+          som.Item_status === "Unavailable"
+      )
+    );
+
+    if (unavailable.length !== 0) {
+      return res.status(400).json({
+        message: `Some of items are unavailable`,
+        items: unavailable,
       });
     }
 
@@ -765,8 +747,6 @@ const ship_items = async (req, res, next) => {
     replacements.itemIds = itemData.items.map((d) => d.Item_ID);
     replacements.serials = itemData.items.map((d) => d.Item_serial);
 
-    console.log("Replacements:", replacements);
-
     await sequelize.query(
       `
       UPDATE "Inventory_Stocks"
@@ -790,6 +770,14 @@ const ship_items = async (req, res, next) => {
         replacements,
         type: QueryTypes.UPDATE,
       }
+    );
+
+    await Inventory_Request.update(
+      {
+        Item_signatories: itemData.Item_signatories,
+        Item_status: "Shipped",
+      },
+      { where: { ID: itemData.Inv_requestID } }
     );
 
     return res.status(200).json({
@@ -828,4 +816,6 @@ module.exports = {
   update_request,
   get_filtered_items,
   ship_items,
+  get_inventory_shipped_items,
+  item_received,
 };

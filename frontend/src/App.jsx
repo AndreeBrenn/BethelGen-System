@@ -17,6 +17,8 @@ import InventoryLayout from "./layout/InventoryLayout";
 import Attributes from "./pages/Inventory/Attributes";
 import Inventory_Request from "./pages/Inventory/Inventory_Request";
 import Procurement from "./pages/Inventory/Procurement";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 function App() {
   const { refreshToken, isLoading } = useAuth();
@@ -38,45 +40,48 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route element={<PublicRoute />}>
-        <Route path="/7039" element={<SuperUser />} />
-        <Route exact path="/login" element={<Login />} />
-      </Route>
+    <>
+      <Routes>
+        <Route element={<PublicRoute />}>
+          <Route path="/7039" element={<SuperUser />} />
+          <Route exact path="/login" element={<Login />} />
+        </Route>
 
-      <Route element={<PrivateRoute />}>
-        <Route path="/" element={<Dashboard />} />
-      </Route>
+        <Route element={<PrivateRoute />}>
+          <Route path="/" element={<Dashboard />} />
+        </Route>
 
-      <Route element={<PrivateRoute route={"Settings"} />}>
-        <Route path="/Settings" element={<SettingsLayout />}>
-          <Route index element={<Settings />} />
-          <Route element={<PrivateRoute route={"Admin Settings"} />}>
-            <Route path="Admin" element={<AdminSettings />} />
+        <Route element={<PrivateRoute route={"Settings"} />}>
+          <Route path="/Settings" element={<SettingsLayout />}>
+            <Route index element={<Settings />} />
+            <Route element={<PrivateRoute route={"Admin Settings"} />}>
+              <Route path="Admin" element={<AdminSettings />} />
+            </Route>
           </Route>
         </Route>
-      </Route>
 
-      <Route element={<PrivateRoute route={"Inventory"} />}>
-        <Route path="/Inventory" element={<InventoryLayout />}>
-          <Route index element={<Inventory />} />
-          <Route element={<PrivateRoute route={"Property"} />}>
-            <Route path="Property" element={<Property />} />
-          </Route>
-          <Route element={<PrivateRoute route={"InventoryAttributes"} />}>
-            <Route path="Attributes" element={<Attributes />} />
-          </Route>
-          <Route element={<PrivateRoute route={"InventoryRequest"} />}>
-            <Route path="Request" element={<Inventory_Request />} />
-          </Route>
-          <Route element={<PrivateRoute route={"Procurement"} />}>
-            <Route path="Procurement" element={<Procurement />} />
+        <Route element={<PrivateRoute route={"Inventory"} />}>
+          <Route path="/Inventory" element={<InventoryLayout />}>
+            <Route index element={<Inventory />} />
+            <Route element={<PrivateRoute route={"Property"} />}>
+              <Route path="Property" element={<Property />} />
+            </Route>
+            <Route element={<PrivateRoute route={"InventoryAttributes"} />}>
+              <Route path="Attributes" element={<Attributes />} />
+            </Route>
+            <Route element={<PrivateRoute route={"InventoryRequest"} />}>
+              <Route path="Request" element={<Inventory_Request />} />
+            </Route>
+            <Route element={<PrivateRoute route={"Procurement"} />}>
+              <Route path="Procurement" element={<Procurement />} />
+            </Route>
           </Route>
         </Route>
-      </Route>
 
-      <Route path="*" element={<MissingPage />} />
-    </Routes>
+        <Route path="*" element={<MissingPage />} />
+      </Routes>
+      <ToastContainer />
+    </>
   );
 }
 
