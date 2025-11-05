@@ -9,12 +9,14 @@ import {
   FaMapMarkerAlt,
   FaClipboardList,
   FaTruck,
+  FaVoteYea,
+  FaBoxOpen,
 } from "react-icons/fa";
 import { MdPending } from "react-icons/md";
 import { decodedUser } from "../../utils/GlobalVariables";
 import { handleApiError } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
-import { data } from "react-router-dom";
+import moment from "moment";
 
 const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
   // Sample data structure - replace with your actual data
@@ -22,6 +24,7 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
   const data = requestData || sampleData;
 
   const axiosPrivate = usePrivateAxios();
+  const user = decodedUser();
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -32,9 +35,11 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
       case "Pending":
         return <MdPending className="text-yellow-500 text-2xl" />;
       case "Submitted":
-        return <FaCheckCircle className="text-blue-500 text-2xl" />;
+        return <FaVoteYea className="text-blue-500 text-2xl" />;
       case "Shipped":
         return <FaTruck className="text-blue-500 text-2xl" />;
+      case "Received":
+        return <FaBoxOpen className="text-green-500 text-2xl" />;
       default:
         return <FaClock className="text-gray-400 text-2xl" />;
     }
@@ -43,6 +48,8 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case "Approved":
+        return "bg-green-50 border-green-200";
+      case "Received":
         return "bg-green-50 border-green-200";
       case "Rejected":
         return "bg-red-50 border-red-200";
@@ -63,6 +70,7 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
       Rejected: "bg-red-100 text-red-800",
       Pending: "bg-yellow-100 text-yellow-800",
       Submitted: "bg-blue-100 text-blue-800",
+      Received: "bg-green-100 text-green-800",
       Shipped: "bg-blue-100 text-blue-800",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
@@ -84,8 +92,22 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
     e.preventDefault();
 
     try {
-      const res = await axiosPrivate.put("/inventory/item-received", {
-        status: "Received",
+      const res = await axiosPrivate.put("/inventory/update-request", {
+        Item_value: JSON.stringify(data.Item_value),
+        Item_signatories: JSON.stringify([
+          ...data.Item_signatories,
+          {
+            ID: user.ID,
+            Date: moment(),
+            Name: data.Item_userID.FirstName + " " + data.Item_userID.LastName,
+            Position: data.Item_userID.Position,
+            Role: user.Role,
+            Status: "Received",
+            Order: data.Item_signatories.length,
+            note: "",
+          },
+        ]),
+        Item_status: "Received",
         ID: data.ID,
       });
 
@@ -94,6 +116,8 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
       handleApiError(error);
     }
   };
+
+  console.log(requestData);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 bg-opacity-50 backdrop-blur-sm">
@@ -145,7 +169,7 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
                 <p className="text-sm text-gray-500 mb-1">Status</p>
                 <span
                   className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(
-                    data.Item_status.toLowerCase()
+                    data.Item_status
                   )}`}
                 >
                   {data.Item_status}

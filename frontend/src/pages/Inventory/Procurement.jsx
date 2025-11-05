@@ -5,14 +5,16 @@ import { handleApiError } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import React_Paginate from "../../utils/React_Paginate";
 import InventoryManageRequestModal from "../../modals/InventoryModal/InventoryManageRequestModal";
+import InventoryPending from "../../components/Inventory/InventoryPending";
+import { decodedUser } from "../../utils/GlobalVariables";
 
 const Procurement = () => {
+  const [activeTab, setActiveTab] = useState("all"); // 'all' or 'pending'
   const [searchText, setSearchText] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [showManageModal, setShowManageModal] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(null);
 
-  // Sample data
   const [inventoryRequests, setInventoryRequest] = useState([]);
 
   const [currentPage, setCurrentPage] = useState(0);
@@ -22,14 +24,28 @@ const Procurement = () => {
 
   const axiosPrivate = usePrivateAxios();
 
+  const user = decodedUser();
+
   const handleSearch = (e) => {
     e.preventDefault();
     setAppliedSearch(searchText);
+    setCurrentPage(0);
+    setItemOffset(0);
   };
 
   const handleClearSearch = () => {
     setAppliedSearch("");
     setSearchText("");
+    setCurrentPage(0);
+    setItemOffset(0);
+  };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setSearchText("");
+    setAppliedSearch("");
+    setCurrentPage(0);
+    setItemOffset(0);
   };
 
   const formatDate = (date) => {
@@ -48,7 +64,7 @@ const Procurement = () => {
     switch (status) {
       case "Pending":
         return "bg-yellow-100 text-yellow-800";
-      case "Done":
+      case "Received":
         return "bg-green-100 text-green-800";
       case "Shipped":
         return "bg-blue-100 text-blue-800";
@@ -61,20 +77,26 @@ const Procurement = () => {
 
   const get_all_request = useCallback(async () => {
     try {
-      const res = await axiosPrivate.get("/inventory/get-all-request", {
+      const endpoint =
+        activeTab === "pending"
+          ? "/inventory/pending-for-me"
+          : "/inventory/get-all-request";
+
+      const res = await axiosPrivate.get(endpoint, {
         params: {
           search: appliedSearch,
           limit: itemsPerPage,
           offset: itemOffset,
+          userId: user.ID,
         },
       });
 
-      setCount(res.data.count);
-      setInventoryRequest(res.data.rows);
+      setCount(res.data.count || res.data.pagination?.total || 0);
+      setInventoryRequest(res.data.rows || res.data.data || []);
     } catch (error) {
       handleApiError(error);
     }
-  }, [appliedSearch, itemOffset, itemsPerPage]);
+  }, [activeTab, appliedSearch, itemOffset, itemsPerPage, axiosPrivate]);
 
   useEffect(() => {
     get_all_request();
@@ -83,6 +105,7 @@ const Procurement = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex justify-between items-center">
             <div>
@@ -94,6 +117,54 @@ const Procurement = () => {
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="bg-white rounded-lg shadow-sm mb-6 overflow-hidden">
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => handleTabChange("all")}
+              className={`flex-1 px-6 py-4 text-sm font-medium transition-colors relative ${
+                activeTab === "all"
+                  ? "text-blue-600 bg-blue-50"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <span>All Requests</span>
+                {activeTab === "all" && count > 0 && (
+                  <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full">
+                    {count}
+                  </span>
+                )}
+              </div>
+              {activeTab === "all" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+              )}
+            </button>
+
+            <button
+              onClick={() => handleTabChange("pending")}
+              className={`flex-1 px-6 py-4 text-sm font-medium transition-colors relative ${
+                activeTab === "pending"
+                  ? "text-blue-600 bg-blue-50"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <span>Pending Signatories</span>
+                {activeTab === "pending" && count > 0 && (
+                  <span className="bg-yellow-600 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+                    {count}
+                  </span>
+                )}
+              </div>
+              {activeTab === "pending" && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Search Bar */}
         <div className="bg-white border border-slate-200 rounded-lg p-4 mb-4 shadow-sm">
           <div className="relative flex">
             <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl" />
@@ -102,7 +173,11 @@ const Procurement = () => {
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch(e)}
-              placeholder="Search by request number, item name, or requester"
+              placeholder={
+                activeTab === "pending"
+                  ? "Search pending requests..."
+                  : "Search by request number, item name, or requester"
+              }
               className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
 
@@ -122,11 +197,41 @@ const Procurement = () => {
           </div>
         </div>
 
+        {/* Info Banner for Pending Tab */}
+        {activeTab === "pending" && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <span className="text-yellow-600 text-2xl">⏳</span>
+              <div>
+                <h3 className="text-sm font-semibold text-yellow-800">
+                  Your Turn to Sign
+                </h3>
+                <p className="text-sm text-yellow-700 mt-1">
+                  These requests are waiting for your approval. All previous
+                  signatories have approved.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Table */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           {inventoryRequests.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-6xl text-gray-300 mb-4">📋</div>
-              <p className="text-gray-500">No inventory requests found.</p>
+              <div className="text-6xl text-gray-300 mb-4">
+                {activeTab === "pending" ? "✅" : "📋"}
+              </div>
+              <p className="text-gray-500 text-lg font-medium">
+                {activeTab === "pending"
+                  ? "No pending requests requiring your signature"
+                  : "No inventory requests found"}
+              </p>
+              {activeTab === "pending" && (
+                <p className="text-gray-400 text-sm mt-2">
+                  All caught up! Check back later for new requests.
+                </p>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -136,7 +241,6 @@ const Procurement = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Request #
                     </th>
-
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Requester
                     </th>
@@ -158,12 +262,18 @@ const Procurement = () => {
                   {inventoryRequests.map((item) => (
                     <tr
                       key={item.ID}
-                      className="hover:bg-gray-50 transition-colors"
+                      className={`hover:bg-gray-50 transition-colors ${
+                        activeTab === "pending" ? "bg-yellow-50/30" : ""
+                      }`}
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {item.ID}
+                        {activeTab === "pending" && (
+                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Your Turn
+                          </span>
+                        )}
                       </td>
-
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {item.Item_userID.FirstName +
                           " " +
@@ -193,13 +303,15 @@ const Procurement = () => {
                           >
                             <FaCog className="text-lg" />
                           </button>
-                          <button
-                            onClick={() => setShowDeleteModal(item.ID)}
-                            className="text-red-600 hover:text-red-700 p-2 rounded hover:bg-red-50 transition-colors"
-                            title="Delete"
-                          >
-                            <FaTrash className="text-lg" />
-                          </button>
+                          {activeTab === "all" && (
+                            <button
+                              onClick={() => setShowDeleteModal(item.ID)}
+                              className="text-red-600 hover:text-red-700 p-2 rounded hover:bg-red-50 transition-colors"
+                              title="Delete"
+                            >
+                              <FaTrash className="text-lg" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -209,6 +321,8 @@ const Procurement = () => {
             </div>
           )}
         </div>
+
+        {activeTab === "all" && <InventoryPending />}
       </div>
 
       <React_Paginate

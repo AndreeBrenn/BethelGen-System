@@ -10,7 +10,11 @@ import {
   FaClock,
   FaBoxOpen,
   FaTruck,
+  FaVoteYea,
 } from "react-icons/fa";
+import { IoCloseSharp } from "react-icons/io5";
+import { RiCloseCircleFill } from "react-icons/ri";
+
 import moment from "moment";
 import { handleApiError } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
@@ -18,12 +22,7 @@ import { decodedUser } from "../../utils/GlobalVariables";
 import { MdLocalShipping } from "react-icons/md";
 import { toast } from "react-toastify";
 
-const InventoryManageRequestModal = ({
-  requestData,
-  onClose,
-  onReturn,
-  onReject,
-}) => {
+const InventoryManageRequestModal = ({ requestData, onClose }) => {
   const [itemData, setItemData] = useState(requestData);
   const [uploadedImage, setUploadedImage] = useState(null);
   const [signatories, setSignatories] = useState([]);
@@ -39,6 +38,13 @@ const InventoryManageRequestModal = ({
   const user = decodedUser();
 
   const allowedButtons = () => {
+    if (
+      itemData.Item_status == "Shipped" ||
+      itemData.Item_status == "Received" ||
+      itemData.Item_status == "Rejected"
+    )
+      return false;
+
     if (!itemData.Item_signatories) return true;
 
     const orderCount = itemData.Item_signatories.filter(
@@ -54,9 +60,25 @@ const InventoryManageRequestModal = ({
       userApprover.Status != "Approved"
     )
       return true;
-    if (itemData.Item_status == "Shipped") return false;
 
     return false;
+  };
+
+  const allowedShipmentComponents = () => {
+    if (!itemData.Item_signatories) {
+      return false;
+    }
+
+    const terminalStatuses = ["Shipped", "Received", "Rejected"];
+    if (terminalStatuses.includes(itemData.Item_status)) {
+      return false;
+    }
+
+    const hasPendingSignatories = itemData.Item_signatories.some(
+      (signatory) => signatory.Status === "Pending"
+    );
+
+    return !hasPendingSignatories;
   };
 
   const get_all_users = useCallback(async () => {
@@ -79,10 +101,12 @@ const InventoryManageRequestModal = ({
     } catch (error) {
       handleApiError(error);
     }
-  });
+  }, []);
+
   useEffect(() => {
     get_all_users();
-    if (itemData.Item_status == "Shipped") get_shipped_items();
+    if (itemData.Item_status == "Shipped" || itemData.Item_status == "Received")
+      get_shipped_items();
   }, []);
 
   const update_request = async (e) => {
@@ -476,7 +500,60 @@ const InventoryManageRequestModal = ({
     }
   };
 
-  console.log(inventory);
+  const reject_request = async (e) => {
+    e.preventDefault();
+
+    try {
+      const newArray = itemData.Item_signatories.filter(
+        (fil) => fil.ID != user.ID
+      );
+      const previousOrder = itemData.Item_signatories.filter(
+        (fil) => fil.ID == user.ID
+      );
+
+      const itemSignatures = !itemData.Item_signatories
+        ? JSON.stringify([
+            {
+              ID: user.ID,
+              Date: moment(),
+              Name: user.FirstName + " " + user.LastName,
+              Role: user.Role,
+              Position: user.Position,
+              Order: 0,
+              Status: "Rejected",
+              note: notes,
+            },
+          ])
+        : JSON.stringify([
+            ...newArray,
+            {
+              ID: user.ID,
+              Date: moment(),
+              Name: user.FirstName + " " + user.LastName,
+              Role: user.Role,
+              Position: user.Position,
+              Order: previousOrder[0].Order,
+              Status: "Rejected",
+              note: notes,
+            },
+          ]);
+
+      const item = {
+        Item_value: JSON.stringify(itemData.Item_value),
+        Item_signatories: itemSignatures,
+        ID: itemData.ID,
+        Item_status: "Rejected",
+      };
+
+      const res = await axiosPrivate.put("/inventory/update-request", item);
+
+      alert("Request Rejected");
+    } catch (error) {
+      console.log(error);
+      handleApiError(error);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 bg-opacity-50 backdrop-blur-sm">
       <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -516,7 +593,7 @@ const InventoryManageRequestModal = ({
                           ? "bg-blue-100 text-blue-800"
                           : itemData?.Item_status == "Rejected"
                           ? "bg-red-100 text-red-800"
-                          : itemData?.Item_status == "Done"
+                          : itemData?.Item_status == "Received"
                           ? "bg-green-100 text-green-800"
                           : ""
                       } `}
@@ -918,9 +995,7 @@ const InventoryManageRequestModal = ({
               )}
 
               {/* ASSIGNING OF ITEMS */}
-              {itemData?.Item_signatories?.filter(
-                (fil) => fil.Status == "Pending"
-              ).length == 0 &&
+              {allowedShipmentComponents() &&
                 itemData.Item_status != "Shipped" &&
                 itemData.Item_status != "Received" && (
                   <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
@@ -1246,16 +1321,16 @@ const InventoryManageRequestModal = ({
                       <div
                         className={`w-8 h-8 rounded-full flex items-center justify-center 
                        
-                            bg-green-500 text-white
+                            bg-blue-500 text-white
                         
                           `}
                       >
-                        <FaCheckCircle />
+                        <FaVoteYea />
                       </div>
                       {
                         <div
                           className={`w-0.5 h-16
-                              bg-green-500
+                              bg-blue-500
                             `}
                         />
                       }
@@ -1282,10 +1357,13 @@ const InventoryManageRequestModal = ({
                       <div className="flex flex-col items-center">
                         <div
                           className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            item.Status == "Approved"
+                            item.Status == "Approved" ||
+                            item.Status == "Received"
                               ? "bg-green-500 text-white"
                               : item.Status == "Shipped"
                               ? "bg-blue-600 text-white"
+                              : item.Status == "Rejected"
+                              ? "bg-red-600 text-white"
                               : "bg-gray-300 text-gray-600"
                           }`}
                         >
@@ -1293,6 +1371,10 @@ const InventoryManageRequestModal = ({
                             <FaCheckCircle />
                           ) : item.Status == "Shipped" ? (
                             <FaTruck />
+                          ) : item.Status == "Received" ? (
+                            <FaBoxOpen />
+                          ) : item.Status == "Rejected" ? (
+                            <RiCloseCircleFill />
                           ) : (
                             <FaClock />
                           )}
@@ -1300,10 +1382,13 @@ const InventoryManageRequestModal = ({
 
                         <div
                           className={`w-0.5 h-16 ${
-                            item.Status == "Approved"
+                            item.Status == "Approved" ||
+                            item.Status == "Received"
                               ? "bg-green-500"
                               : item.Status == "Shipped"
                               ? "bg-blue-500"
+                              : item.Status == "Rejected"
+                              ? "bg-red-600"
                               : "bg-gray-300"
                           }`}
                         />
@@ -1341,7 +1426,10 @@ const InventoryManageRequestModal = ({
             </button>
             {allowedButtons() && (
               <>
-                <button className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2">
+                <button
+                  onClick={(e) => reject_request(e)}
+                  className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
+                >
                   <FaBan />
                   Reject
                 </button>
@@ -1359,19 +1447,15 @@ const InventoryManageRequestModal = ({
               </>
             )}
 
-            {itemData?.Item_signatories?.filter(
-              (fil) => fil.Status == "Pending"
-            ).length == 0 &&
-              itemData.Item_status != "Shipped" &&
-              itemData.Item_status != "Received" && (
-                <button
-                  onClick={(e) => ship_items(e)}
-                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
-                >
-                  <MdLocalShipping className="text-xl" />
-                  Ready for Shipment
-                </button>
-              )}
+            {allowedShipmentComponents() && (
+              <button
+                onClick={(e) => ship_items(e)}
+                className="px-6 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+              >
+                <MdLocalShipping className="text-xl" />
+                Ready for Shipment
+              </button>
+            )}
           </div>
         </div>
       </div>
