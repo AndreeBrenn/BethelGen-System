@@ -10,6 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@pdfme/common": "^5.4.6",
+    "@pdfme/generator": "^5.4.6",
+    "@pdfme/schemas": "^5.4.6",
+    "@pdfme/ui": "^5.4.6",
     "@tailwindcss/vite": "^4.1.14",
     "axios": "^1.12.2",
     "jwt-decode": "^4.0.0",

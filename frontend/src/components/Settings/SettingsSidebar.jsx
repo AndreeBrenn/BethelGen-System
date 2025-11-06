@@ -2,6 +2,7 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 import { MdAdminPanelSettings, MdBusiness, MdSecurity } from "react-icons/md";
 import { decodedUser } from "../../utils/GlobalVariables";
+import { LuLibrary } from "react-icons/lu";
 
 const SettingsSidebar = () => {
   const decode = decodedUser();
@@ -11,6 +12,12 @@ const SettingsSidebar = () => {
       icon: MdAdminPanelSettings,
       path: "/Settings/admin",
       access: "Admin Settings",
+    },
+    {
+      title: "Documents",
+      icon: LuLibrary,
+      path: "/Settings/Documents",
+      access: "Document Settings",
     },
   ];
 

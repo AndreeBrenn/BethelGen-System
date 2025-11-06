@@ -19,6 +19,7 @@ import Inventory_Request from "./pages/Inventory/Inventory_Request";
 import Procurement from "./pages/Inventory/Procurement";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import DocumentSettings from "./pages/SettingsPages/DocumentSettings";
 
 function App() {
   const { refreshToken, isLoading } = useAuth();
@@ -56,6 +57,9 @@ function App() {
             <Route index element={<Settings />} />
             <Route element={<PrivateRoute route={"Admin Settings"} />}>
               <Route path="Admin" element={<AdminSettings />} />
+            </Route>
+            <Route element={<PrivateRoute route={"Document Settings"} />}>
+              <Route path="Documents" element={<DocumentSettings />} />
             </Route>
           </Route>
         </Route>

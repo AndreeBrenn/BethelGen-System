@@ -518,33 +518,24 @@ const get_all_request = async (req, res, next) => {
   const { search, offset, limit } = req.query;
 
   try {
-    const whereClause = {
-      ...(search && {
+    let whereClause = {};
+
+    if (search) {
+      whereClause = {
         [Op.or]: [
           { Item_branch: { [Op.iLike]: `%${search}%` } },
+          Sequelize.where(
+            Sequelize.cast(Sequelize.col("Inventory_Request.ID"), "varchar"),
+            { [Op.iLike]: `%${search}%` }
+          ),
           { "$Item_userID.FirstName$": { [Op.iLike]: `%${search}%` } },
           { "$Item_userID.LastName$": { [Op.iLike]: `%${search}%` } },
+          { "$Item_userID.Department$": { [Op.iLike]: `%${search}%` } },
         ],
-      }),
-    };
+      };
+    }
 
-    // Get count
-    const count = await Inventory_Request.count({
-      include: [
-        {
-          model: Users,
-          as: "Item_userID",
-          attributes: [],
-        },
-      ],
-      where: whereClause,
-      distinct: true,
-      col: "ID",
-      required: false,
-    });
-
-    // Get rows
-    const rows = await Inventory_Request.findAll({
+    const { count, rows } = await Inventory_Request.findAndCountAll({
       include: [
         {
           model: Users,
@@ -557,22 +548,27 @@ const get_all_request = async (req, res, next) => {
             "Department",
             "Position",
           ],
+          required: false,
         },
         {
           model: Inventory_Stocks,
           as: "Inv_request",
+          required: false,
         },
       ],
       where: whereClause,
-      limit,
-      offset,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
       order: [["ID", "DESC"]],
+      distinct: true,
+      subQuery: false,
     });
 
     const result = { count, rows };
 
     return res.status(200).json(result);
   } catch (error) {
+    console.error("Error in get_all_request:", error);
     next(error);
   }
 };
@@ -633,6 +629,105 @@ const update_request = async (req, res, next) => {
   }
 };
 
+// @desc    Get pending of Inventory_request for signatories based on User
+// @route   GET /inventory/pending-for-me
+// @access  Private
+
+const get_pending = async (req, res, next) => {
+  const { page = 1, limit = 10, search = "", userId } = req.query;
+  const offset = (page - 1) * limit;
+
+  try {
+    // Build where conditions
+    const whereConditions = {
+      Item_status: {
+        [Op.notIn]: ["Shipped", "Received", "Rejected"],
+      },
+      Item_signatories: {
+        [Op.ne]: null,
+      },
+      [Op.and]: [
+        Sequelize.literal(`
+          EXISTS (
+            SELECT 1 
+            FROM jsonb_array_elements("Inventory_Request"."Item_signatories") AS sig
+            WHERE sig->>'ID' = '${userId}'
+          )
+        `),
+        Sequelize.literal(`
+          (
+            SELECT (sig->>'Order')::int
+            FROM jsonb_array_elements("Inventory_Request"."Item_signatories") AS sig
+            WHERE sig->>'ID' = '${userId}'
+            LIMIT 1
+          ) = (
+            SELECT COUNT(*)
+            FROM jsonb_array_elements("Inventory_Request"."Item_signatories") AS sig
+            WHERE sig->>'Status' = 'Approved'
+          )
+        `),
+        Sequelize.literal(`
+          EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements("Inventory_Request"."Item_signatories") AS sig
+            WHERE sig->>'ID' = '${userId}'
+            AND sig->>'Status' != 'Approved'
+          )
+        `),
+      ],
+    };
+
+    // Add search if provided
+    if (search) {
+      whereConditions[Op.or] = [
+        Sequelize.where(
+          Sequelize.cast(Sequelize.col("Inventory_Request.ID"), "varchar"),
+          { [Op.like]: `%${search}%` }
+        ),
+        Sequelize.where(
+          Sequelize.fn(
+            "LOWER",
+            Sequelize.fn(
+              "concat",
+              Sequelize.col("Item_userID.FirstName"),
+              " ",
+              Sequelize.col("Item_userID.LastName")
+            )
+          ),
+          { [Op.like]: `%${search.toLowerCase()}%` }
+        ),
+        Sequelize.where(
+          Sequelize.fn("LOWER", Sequelize.col("Item_userID.Department")),
+          { [Op.like]: `%${search.toLowerCase()}%` }
+        ),
+      ];
+    }
+
+    const { count, rows } = await Inventory_Request.findAndCountAll({
+      where: whereConditions,
+      include: [
+        {
+          model: Users,
+          as: "Item_userID",
+          attributes: ["FirstName", "LastName", "Role", "Email", "Department"],
+        },
+      ],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [["createdAt", "DESC"]],
+      distinct: true,
+    });
+
+    res.json({
+      count,
+      rows,
+    });
+  } catch (error) {
+    console.error("Error in get_pending:", error);
+    next(error);
+  }
+};
+
 //#endregion
 
 //#region SHIPMENT
@@ -642,6 +737,10 @@ const update_request = async (req, res, next) => {
   INVENTORY_REQUEST
   INVENTORY_STOCKS
 */
+
+// @desc    Get all the shipped inventory for receiving.
+// @route   POST /inventory/get-shipped-items
+// @access  Private
 
 const get_inventory_shipped_items = async (req, res, next) => {
   const itemData = req.body;
@@ -660,6 +759,11 @@ const get_inventory_shipped_items = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Update the Inventory_Stocks and Inventory_Request
+// @route   PUT /inventory/ship-items
+// @access  Private
+
 const ship_items = async (req, res, next) => {
   const itemData = req.body;
 
@@ -785,205 +889,6 @@ const ship_items = async (req, res, next) => {
 };
 
 //#endregion
-
-//TEST QUERY PENDING
-
-// const get_pending = async (req, res, next) => {
-//   const { page = 1, limit = 10 } = req.query;
-//   const userId = req.user.ID; // Assuming you have user from auth middleware
-//   const offset = (page - 1) * limit;
-
-//   try {
-//     const query = `
-//       SELECT ir.*
-//       FROM "Inventory_Requests" ir
-//       WHERE
-//         -- Not in terminal status
-//         ir."Item_status" NOT IN ('Shipped', 'Received', 'Rejected')
-//         -- Has signatories
-//         AND ir."Item_signatories" IS NOT NULL
-//         -- User is in the signatories list
-//         AND EXISTS (
-//           SELECT 1
-//           FROM jsonb_array_elements(ir."Item_signatories") AS sig
-//           WHERE sig->>'ID' = :userId
-//         )
-//         -- It's user's turn: user's Order = count of Approved signatories
-//         AND (
-//           SELECT (sig->>'Order')::int
-//           FROM jsonb_array_elements(ir."Item_signatories") AS sig
-//           WHERE sig->>'ID' = :userId
-//           LIMIT 1
-//         ) = (
-//           SELECT COUNT(*)
-//           FROM jsonb_array_elements(ir."Item_signatories") AS sig
-//           WHERE sig->>'Status' = 'Approved'
-//         )
-//         -- User hasn't approved yet
-//         AND EXISTS (
-//           SELECT 1
-//           FROM jsonb_array_elements(ir."Item_signatories") AS sig
-//           WHERE sig->>'ID' = :userId
-//           AND sig->>'Status' != 'Approved'
-//         )
-//       ORDER BY ir."createdAt" DESC
-//       LIMIT :limit OFFSET :offset
-//     `;
-
-//     const countQuery = `
-//       SELECT COUNT(*) as count
-//       FROM "Inventory_Requests" ir
-//       WHERE
-//         ir."Item_status" NOT IN ('Shipped', 'Received', 'Rejected')
-//         AND ir."Item_signatories" IS NOT NULL
-//         AND EXISTS (
-//           SELECT 1
-//           FROM jsonb_array_elements(ir."Item_signatories") AS sig
-//           WHERE sig->>'ID' = :userId
-//         )
-//         AND (
-//           SELECT (sig->>'Order')::int
-//           FROM jsonb_array_elements(ir."Item_signatories") AS sig
-//           WHERE sig->>'ID' = :userId
-//           LIMIT 1
-//         ) = (
-//           SELECT COUNT(*)
-//           FROM jsonb_array_elements(ir."Item_signatories") AS sig
-//           WHERE sig->>'Status' = 'Approved'
-//         )
-//         AND EXISTS (
-//           SELECT 1
-//           FROM jsonb_array_elements(ir."Item_signatories") AS sig
-//           WHERE sig->>'ID' = :userId
-//           AND sig->>'Status' != 'Approved'
-//         )
-//     `;
-
-//     const [rows, countResult] = await Promise.all([
-//       sequelize.query(query, {
-//         replacements: {
-//           userId,
-//           limit: parseInt(limit),
-//           offset: parseInt(offset),
-//         },
-//         type: Sequelize.QueryTypes.SELECT,
-//       }),
-//       sequelize.query(countQuery, {
-//         replacements: { userId },
-//         type: Sequelize.QueryTypes.SELECT,
-//       }),
-//     ]);
-
-//     const total = parseInt(countResult[0].count);
-
-//     res.json({
-//       success: true,
-//       data: rows,
-//       pagination: {
-//         total,
-//         page: parseInt(page),
-//         limit: parseInt(limit),
-//         totalPages: Math.ceil(total / limit),
-//       },
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-const get_pending = async (req, res, next) => {
-  const { page = 1, limit = 10, search = "", userId } = req.query;
-  const offset = (page - 1) * limit;
-
-  try {
-    // Build where conditions
-    const whereConditions = {
-      Item_status: {
-        [Op.notIn]: ["Shipped", "Received", "Rejected"],
-      },
-      Item_signatories: {
-        [Op.ne]: null,
-      },
-      [Op.and]: [
-        Sequelize.literal(`
-          EXISTS (
-            SELECT 1 
-            FROM jsonb_array_elements("Inventory_Request"."Item_signatories") AS sig
-            WHERE sig->>'ID' = '${userId}'
-          )
-        `),
-        Sequelize.literal(`
-          (
-            SELECT (sig->>'Order')::int
-            FROM jsonb_array_elements("Inventory_Request"."Item_signatories") AS sig
-            WHERE sig->>'ID' = '${userId}'
-            LIMIT 1
-          ) = (
-            SELECT COUNT(*)
-            FROM jsonb_array_elements("Inventory_Request"."Item_signatories") AS sig
-            WHERE sig->>'Status' = 'Approved'
-          )
-        `),
-        Sequelize.literal(`
-          EXISTS (
-            SELECT 1
-            FROM jsonb_array_elements("Inventory_Request"."Item_signatories") AS sig
-            WHERE sig->>'ID' = '${userId}'
-            AND sig->>'Status' != 'Approved'
-          )
-        `),
-      ],
-    };
-
-    // Add search if provided
-    if (search) {
-      whereConditions[Op.or] = [
-        Sequelize.where(
-          Sequelize.cast(Sequelize.col("Inventory_Request.ID"), "varchar"),
-          { [Op.like]: `%${search}%` }
-        ),
-        Sequelize.where(
-          Sequelize.fn(
-            "LOWER",
-            Sequelize.fn(
-              "concat",
-              Sequelize.col("Item_userID.FirstName"),
-              " ",
-              Sequelize.col("Item_userID.LastName")
-            )
-          ),
-          { [Op.like]: `%${search.toLowerCase()}%` }
-        ),
-        Sequelize.where(
-          Sequelize.fn("LOWER", Sequelize.col("Item_userID.Department")),
-          { [Op.like]: `%${search.toLowerCase()}%` }
-        ),
-      ];
-    }
-
-    const { count, rows } = await Inventory_Request.findAndCountAll({
-      where: whereConditions,
-      include: [
-        {
-          model: Users,
-          as: "Item_userID",
-          attributes: ["FirstName", "LastName", "Role", "Email", "Department"],
-        },
-      ],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      order: [["createdAt", "DESC"]],
-      distinct: true,
-    });
-
-    res.json({
-      count,
-      rows,
-    });
-  } catch (error) {
-    console.error("Error in get_pending:", error);
-    next(error);
-  }
-};
 
 module.exports = {
   create_category,

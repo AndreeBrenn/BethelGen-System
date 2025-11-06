@@ -291,56 +291,58 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
                   </div>
                 </div>
 
-                {data.Item_signatories?.map((signatory, index) => (
-                  <div key={index} className="relative flex gap-4">
-                    {/* Icon */}
-                    <div className="relative z-10 flex-shrink-0">
-                      {getStatusIcon(signatory.Status)}
-                    </div>
+                {data.Item_signatories?.sort((a, b) => a?.Order - b?.Order).map(
+                  (signatory, index) => (
+                    <div key={index} className="relative flex gap-4">
+                      {/* Icon */}
+                      <div className="relative z-10 flex-shrink-0">
+                        {getStatusIcon(signatory.Status)}
+                      </div>
 
-                    {/* Content */}
-                    <div
-                      className={`flex-1 border rounded-lg p-4 ${getStatusColor(
-                        signatory.Status
-                      )}`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h4 className="font-semibold text-gray-900 text-base">
-                            {signatory.Position}
-                          </h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <FaUser className="text-gray-500 text-sm" />
-                            <p className="text-sm text-gray-700">
-                              {signatory.Name}
+                      {/* Content */}
+                      <div
+                        className={`flex-1 border rounded-lg p-4 ${getStatusColor(
+                          signatory.Status
+                        )}`}
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h4 className="font-semibold text-gray-900 text-base">
+                              {signatory.Position}
+                            </h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <FaUser className="text-gray-500 text-sm" />
+                              <p className="text-sm text-gray-700">
+                                {signatory.Name}
+                              </p>
+                            </div>
+                          </div>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${getStatusBadge(
+                              signatory.Status
+                            )}`}
+                          >
+                            {signatory.Status}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                          <FaCalendarAlt className="text-gray-500" />
+                          <span>{formatDate(signatory.Date)}</span>
+                        </div>
+
+                        {signatory.note && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Remarks: </span>
+                              {signatory.note}
                             </p>
                           </div>
-                        </div>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${getStatusBadge(
-                            signatory.Status
-                          )}`}
-                        >
-                          {signatory.Status}
-                        </span>
+                        )}
                       </div>
-
-                      <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                        <FaCalendarAlt className="text-gray-500" />
-                        <span>{formatDate(signatory.Date)}</span>
-                      </div>
-
-                      {signatory.note && (
-                        <div className="mt-3 pt-3 border-t border-gray-200">
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">Remarks: </span>
-                            {signatory.note}
-                          </p>
-                        </div>
-                      )}
                     </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
             </div>
           </div>

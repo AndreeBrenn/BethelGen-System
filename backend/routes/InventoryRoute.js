@@ -61,12 +61,10 @@ router.delete(
 );
 router.get("/get-all-request", protected, get_all_request);
 router.put("/update-request", protected, uploadSupportingForms, update_request);
+router.get("/pending-for-me", protected, get_pending);
 
 //SHIP ITEMS
 router.put("/ship-items", protected, ship_items);
 router.post("/get-shipped-items", protected, get_inventory_shipped_items);
-
-//TEST
-router.get("/pending-for-me", protected, get_pending);
 
 module.exports = router;
