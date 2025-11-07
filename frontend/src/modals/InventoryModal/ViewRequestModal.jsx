@@ -18,7 +18,7 @@ import { handleApiError } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import moment from "moment";
 
-const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
+const ViewRequestModal = ({ setViewRequestModal, requestData, trigger }) => {
   // Sample data structure - replace with your actual data
 
   const data = requestData || sampleData;
@@ -111,13 +111,14 @@ const ViewRequestModal = ({ setViewRequestModal, requestData }) => {
         ID: data.ID,
       });
 
+      trigger();
       alert("Item Received");
+
+      setViewRequestModal(null);
     } catch (error) {
       handleApiError(error);
     }
   };
-
-  console.log(requestData);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 bg-opacity-50 backdrop-blur-sm">

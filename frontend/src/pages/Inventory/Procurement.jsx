@@ -7,6 +7,25 @@ import React_Paginate from "../../utils/React_Paginate";
 import InventoryManageRequestModal from "../../modals/InventoryModal/InventoryManageRequestModal";
 import InventoryPending from "../../components/Inventory/InventoryPending";
 import { decodedUser } from "../../utils/GlobalVariables";
+import { IoPrintSharp } from "react-icons/io5";
+import { generate } from "@pdfme/generator";
+import {
+  text,
+  multiVariableText,
+  image,
+  barcodes,
+  line,
+  rectangle,
+  ellipse,
+  svg,
+  table,
+  select,
+  date,
+  time,
+  dateTime,
+  radioGroup,
+  checkbox,
+} from "@pdfme/schemas";
 
 const Procurement = () => {
   const [activeTab, setActiveTab] = useState("all"); // 'all' or 'pending'
@@ -101,6 +120,68 @@ const Procurement = () => {
   useEffect(() => {
     get_all_request();
   }, [get_all_request]);
+
+  const generate_PDF = async (e, data) => {
+    e.preventDefault();
+
+    try {
+      const res = await axiosPrivate.get("/Documents/get-single-document", {
+        params: { ID: 1 },
+      });
+
+      const tableData = data.Item_value.map((item) => [
+        String(item.Item_quantity),
+        String(item.Item_name),
+        String(item.Item_amount),
+        String(parseInt(item.Item_amount) * parseInt(item.Item_quantity)),
+      ]);
+
+      const signatoriesObject = data.Item_signatories.reduce(
+        (acc, signatory, index) => {
+          acc[`signatory${index + 1}`] = signatory.Name;
+          return acc;
+        },
+        {}
+      );
+
+      const inputs = [
+        {
+          field1: JSON.stringify(tableData),
+          ...signatoriesObject,
+        },
+      ];
+
+      const font = {
+        Roboto: {
+          data: "https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf",
+          fallback: true,
+        },
+      };
+
+      const pdf = await generate({
+        template: res.data.Schema,
+        inputs: inputs,
+        plugins: {
+          text, // ← Required for text fields (signatories)
+          table, // ← Required for table field
+        },
+        options: {
+          font: font, // ← Add fonts
+        },
+      });
+
+      const blob = new Blob([pdf.buffer], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      handleApiError(error);
+      console.log(error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -294,8 +375,8 @@ const Procurement = () => {
                           {item.Item_status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                        <div className="flex items-center justify-center gap-2">
+                      <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
+                        <div className="flex items-center justify-start gap-2">
                           <button
                             onClick={() => setShowManageModal(item)}
                             className="text-blue-600 hover:text-blue-700 p-2 rounded hover:bg-blue-50 transition-colors"
@@ -303,13 +384,13 @@ const Procurement = () => {
                           >
                             <FaCog className="text-lg" />
                           </button>
-                          {activeTab === "all" && (
+
+                          {item.Item_status == "Received" && (
                             <button
-                              onClick={() => setShowDeleteModal(item.ID)}
-                              className="text-red-600 hover:text-red-700 p-2 rounded hover:bg-red-50 transition-colors"
-                              title="Delete"
+                              onClick={(e) => generate_PDF(e, item)}
+                              className="text-green-600 hover:text-green-700 p-1 rounded hover:bg-green-50 transition-colors"
                             >
-                              <FaTrash className="text-lg" />
+                              <IoPrintSharp className="text-lg" />{" "}
                             </button>
                           )}
                         </div>
@@ -337,6 +418,7 @@ const Procurement = () => {
         <InventoryManageRequestModal
           requestData={showManageModal}
           onClose={() => setShowManageModal(null)}
+          trigger={get_all_request}
         />
       )}
     </div>

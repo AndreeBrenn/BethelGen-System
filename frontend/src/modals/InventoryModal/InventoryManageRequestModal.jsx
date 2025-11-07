@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { FaTimes, FaCheck, FaUndo, FaBan } from "react-icons/fa";
 import moment from "moment";
-import { handleApiError } from "../../utils/HandleError";
+import { handleApiError, toastObjects } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import { decodedUser } from "../../utils/GlobalVariables";
 import { MdLocalShipping } from "react-icons/md";
@@ -14,7 +14,7 @@ import AssignSignatories from "../../components/Inventory/InventoryManageRequest
 import AssigningOfItems from "../../components/Inventory/InventoryManageRequestModal/AssigningOfItems";
 import ImageItems from "../../components/Inventory/InventoryManageRequestModal/ImageItems";
 
-const InventoryManageRequestModal = ({ requestData, onClose }) => {
+const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
   const [itemData, setItemData] = useState(requestData);
   const [signatories, setSignatories] = useState([]);
   const [notes, setNotes] = useState("");
@@ -108,7 +108,7 @@ const InventoryManageRequestModal = ({ requestData, onClose }) => {
       // INITIAL STAGE
       if (!itemData.Item_signatories) {
         if (signatoriesSelected.length == 0) {
-          alert("Please assign a signatory");
+          toast.error("Please assign a signatories", toastObjects);
           return;
         }
 
@@ -141,7 +141,10 @@ const InventoryManageRequestModal = ({ requestData, onClose }) => {
         });
 
         const res = await axiosPrivate.put("/inventory/update-request", form);
-        alert("Data Updated");
+
+        trigger();
+        toast.success("Item is successfully processed", toastObjects);
+        onClose();
         return;
       }
 
@@ -178,7 +181,10 @@ const InventoryManageRequestModal = ({ requestData, onClose }) => {
 
       const res = await axiosPrivate.put("/inventory/update-request", form);
 
-      alert("Data Updated!");
+      trigger();
+
+      toast.success("Item is successfully processed", toastObjects);
+      onClose();
     } catch (error) {
       console.log(error);
       handleApiError(error);
@@ -464,8 +470,9 @@ const InventoryManageRequestModal = ({ requestData, onClose }) => {
       };
 
       const res = await axiosPrivate.put("/inventory/ship-items", items);
-      console.log(res);
-      alert("Data Updated Successfully!");
+      trigger();
+      toast.success("Items is successfully shipped", toastObjects);
+      onClose();
     } catch (error) {
       console.log(error);
       handleApiError(error);
@@ -538,7 +545,10 @@ const InventoryManageRequestModal = ({ requestData, onClose }) => {
 
       const res = await axiosPrivate.put("/inventory/update-request", item);
 
-      alert("Request Rejected");
+      trigger();
+      toast.success("Request is successfully rejected", toastObjects);
+
+      onClose();
     } catch (error) {
       console.log(error);
       handleApiError(error);
@@ -653,10 +663,10 @@ const InventoryManageRequestModal = ({ requestData, onClose }) => {
                   <FaBan />
                   Reject
                 </button>
-                <button className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium flex items-center gap-2">
+                {/* <button className="px-6 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium flex items-center gap-2">
                   <FaUndo />
                   Return
-                </button>
+                </button> */}
                 <button
                   onClick={(e) => update_request(e)}
                   className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2"

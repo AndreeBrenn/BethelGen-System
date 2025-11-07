@@ -229,6 +229,7 @@ const Item_Request = () => {
         <ViewRequestModal
           requestData={viewRequestModal}
           setViewRequestModal={setViewRequestModal}
+          trigger={get_personal_request}
         />
       )}
 

@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { decodedUser } from "../../utils/GlobalVariables";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
-import { handleApiError } from "../../utils/HandleError";
+import { handleApiError, toastObjects } from "../../utils/HandleError";
 import { MdDelete } from "react-icons/md";
+import { toast } from "react-toastify";
 
 const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
   const [inputFields, setInputFields] = useState({
@@ -71,7 +72,7 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
 
     try {
       if (requestArray.length == 0) {
-        alert("there's no item detected");
+        toast.error("there's no item detected", toastObjects);
         return;
       }
 
@@ -87,7 +88,7 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
         submittedData
       );
 
-      alert("Data Submitted");
+      toast.success("Request successfully added", toastObjects);
       trigger();
       setShowAddRequest(null);
       setInputFields({
@@ -256,7 +257,10 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
                       .filter(
                         (fil) => fil.ID == inputFields.Item_category.ID
                       )[0]
-                      ?.inv_subcat.map((data) => (
+                      ?.inv_subcat.filter(
+                        (fil) => fil.Subcategory_name != "Documents"
+                      )
+                      .map((data) => (
                         <>
                           <option
                             value={data.Subcategory_name}
