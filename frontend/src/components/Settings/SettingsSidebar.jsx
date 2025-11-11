@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { MdAdminPanelSettings, MdBusiness, MdSecurity } from "react-icons/md";
 import { decodedUser } from "../../utils/GlobalVariables";
 import { LuLibrary } from "react-icons/lu";
+import { AiFillSignature } from "react-icons/ai";
 
 const SettingsSidebar = () => {
   const decode = decodedUser();
@@ -18,6 +19,12 @@ const SettingsSidebar = () => {
       icon: LuLibrary,
       path: "/Settings/Documents",
       access: "Document Settings",
+    },
+    {
+      title: "Signatories",
+      icon: AiFillSignature,
+      path: "/Settings/Signatory",
+      access: "Signatory Settings",
     },
   ];
 

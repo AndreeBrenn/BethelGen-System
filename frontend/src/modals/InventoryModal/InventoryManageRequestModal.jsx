@@ -82,6 +82,16 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
     }
   }, []);
 
+  const get_all_signatories = useCallback(async () => {
+    try {
+      const res = await axiosPrivate.get("/signatories/get-all-signatory");
+
+      setSignatoriesSelected(res.data);
+    } catch (error) {
+      handleApiError(error);
+    }
+  }, []);
+
   const get_shipped_items = useCallback(async () => {
     try {
       const res = await axiosPrivate.post("/inventory/get-shipped-items", {
@@ -98,6 +108,7 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
     get_all_users();
     if (itemData.Item_status == "Shipped" || itemData.Item_status == "Received")
       get_shipped_items();
+    if (!itemData.Item_signatories) get_all_signatories();
   }, []);
 
   const update_request = async (e) => {

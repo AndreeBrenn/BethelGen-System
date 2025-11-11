@@ -74,7 +74,7 @@ const createUser = async (req, res, next) => {
 };
 
 // @desc    Get Users
-// @route   GET /users/get-users/:search
+// @route   GET /users/get-users
 // @access  Private
 
 const getAllUsers = async (req, res, next) => {
@@ -230,8 +230,8 @@ const logout_user = async (req, res) => {
 
 //#region GET USERS
 
-// @desc    Logout user
-// @route   GET /users/logout
+// @desc    GET ALL USERS
+// @route   GET /users/get-all-users
 // @access  Private
 
 const get_all_users = async (req, res, next) => {

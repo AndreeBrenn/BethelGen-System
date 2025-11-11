@@ -20,6 +20,7 @@ import Procurement from "./pages/Inventory/Procurement";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import DocumentSettings from "./pages/SettingsPages/DocumentSettings";
+import SignatoriesSettings from "./pages/SettingsPages/SignatoriesSettings";
 
 function App() {
   const { refreshToken, isLoading } = useAuth();
@@ -60,6 +61,9 @@ function App() {
             </Route>
             <Route element={<PrivateRoute route={"Document Settings"} />}>
               <Route path="Documents" element={<DocumentSettings />} />
+            </Route>
+            <Route element={<PrivateRoute route={"Signatory Settings"} />}>
+              <Route path="Signatory" element={<SignatoriesSettings />} />
             </Route>
           </Route>
         </Route>

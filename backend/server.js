@@ -19,6 +19,7 @@ app.use(cookies());
 app.use("/users", require("./routes/UserRoute"));
 app.use("/inventory", require("./routes/InventoryRoute"));
 app.use("/documents", require("./routes/DocumentRoute"));
+app.use("/signatories", require("./routes/SignatoryRoute"));
 
 app.use(errorHandler);
 

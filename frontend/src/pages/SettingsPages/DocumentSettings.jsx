@@ -187,7 +187,7 @@ const DocumentSettings = () => {
   };
 
   return (
-    <div className="p-6 max-w-[1600px] mx-auto">
+    <div className=" mx-auto">
       {/* Page Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between flex-wrap gap-4">
