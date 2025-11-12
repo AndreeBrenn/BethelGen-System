@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { FaBoxOpen } from "react-icons/fa";
 
 const AssigningOfItems = ({
@@ -12,7 +12,41 @@ const AssigningOfItems = ({
   handleChangeTextArea,
   handleChangeRadio,
   errors,
+  setItemState,
 }) => {
+  useEffect(() => {
+    const get_item = async () => {
+      const promises = itemData.Item_value.map((data, index) => {
+        return get_item_filtered(
+          data.Item_category,
+          data.Item_subcategory,
+          data.Item_classification,
+          index
+        );
+      });
+
+      const temp = await Promise.all(promises);
+      const NameOfItems = temp.flat();
+
+      const newItemState = itemData.Item_value.map((data, index) => {
+        const data_ID = NameOfItems.find(
+          (fil) => fil.Item_name === data.Item_name
+        );
+
+        return {
+          position: index,
+          item_ID: data_ID.ID,
+          method: 1,
+          itemName: data_ID.Item_name,
+        };
+      });
+
+      // Set state once with all items
+      setItemState(newItemState);
+    };
+    get_item();
+  }, []);
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -29,7 +63,7 @@ const AssigningOfItems = ({
               {/* ASSIGNING OF ITEM */}
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Item Name
+                  Item Request
                 </label>
                 <input
                   type="text"
@@ -42,9 +76,12 @@ const AssigningOfItems = ({
               {/* Item ID Selector */}
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Assign to Item ID
+                  Item Property
                 </label>
                 <select
+                  disabled={itemData.Item_value.some(
+                    (som) => som.Item_subcategory == "Documents"
+                  )}
                   onChange={(e) =>
                     handleChangeDropDown(
                       index,
@@ -67,7 +104,7 @@ const AssigningOfItems = ({
                   defaultValue=""
                 >
                   <option value="" disabled>
-                    Select Item ID
+                    Select Item
                   </option>
 
                   {(dropDownAssign[index] || []).map((item) => (

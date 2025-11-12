@@ -20,8 +20,6 @@ const InventoryPending = ({ user }) => {
         `/inventory/pending-for-me?page=${page}&limit=${pagination.limit}`
       );
 
-      console.log(response);
-
       setItems(response.data);
       setPagination(response.data.pagination);
     } catch (error) {

@@ -167,7 +167,19 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
           <div className="flex gap-2 px-6 mt-4">
             <button
               type="button"
-              onClick={() => setActiveTab("assets")}
+              onClick={() => {
+                setActiveTab("assets");
+                setRequestArray([]);
+                setInputFields({
+                  Item_name: "",
+                  Item_category: { ID: "", name: "" },
+                  Item_subcategory: { ID: "", name: "" },
+                  Item_classification: "",
+                  Item_description: "",
+                  Item_quantity: 0,
+                  Item_status: "Pending",
+                });
+              }}
               className={`px-4 py-2 rounded-md font-medium transition-all cursor-pointer ${
                 activeTab === "assets"
                   ? "bg-blue-600 text-white shadow-md"
@@ -178,7 +190,10 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
             </button>
             <button
               type="button"
-              onClick={(e) => click_documents(e)}
+              onClick={(e) => {
+                click_documents(e);
+                setRequestArray([]);
+              }}
               className={`px-4 py-2 rounded-md font-medium transition-all cursor-pointer ${
                 activeTab === "documents"
                   ? "bg-blue-600 text-white shadow-md"
@@ -390,15 +405,21 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
                   },
                 ]);
 
-                setInputFields({
+                setInputFields((prev) => ({
                   Item_name: "",
-                  Item_category: { ID: "", name: "" },
-                  Item_subcategory: { ID: "", name: "" },
+                  Item_category:
+                    activeTab === "documents"
+                      ? prev.Item_category
+                      : { ID: "", name: "" },
+                  Item_subcategory:
+                    activeTab === "documents"
+                      ? prev.Item_subcategory
+                      : { ID: "", name: "" },
                   Item_classification: "",
                   Item_description: "",
                   Item_quantity: 0,
                   Item_status: "Pending",
-                });
+                }));
               }}
               type="button"
               className="w-full px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"

@@ -130,7 +130,9 @@ const SignatoriesSettings = () => {
     e.preventDefault();
 
     try {
-      const res = axiosPrivate.delete(`/signatories/remove-signatory/${ID}`);
+      const res = await axiosPrivate.delete(
+        `/signatories/remove-signatory/${ID}`
+      );
 
       toast.success("Signatory Deleted", toastObjects);
       get_signatories();

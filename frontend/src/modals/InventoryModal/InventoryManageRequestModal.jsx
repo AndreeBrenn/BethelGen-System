@@ -13,12 +13,16 @@ import ShippedItems from "../../components/Inventory/InventoryManageRequestModal
 import AssignSignatories from "../../components/Inventory/InventoryManageRequestModal/AssignSignatories";
 import AssigningOfItems from "../../components/Inventory/InventoryManageRequestModal/AssigningOfItems";
 import ImageItems from "../../components/Inventory/InventoryManageRequestModal/ImageItems";
+import AssignSignatoriesDocument from "../../components/Inventory/InventoryManageRequestModal/AssignSignatoriesDocument";
 
 const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
   const [itemData, setItemData] = useState(requestData);
   const [signatories, setSignatories] = useState([]);
   const [notes, setNotes] = useState("");
   const [signatoriesSelected, setSignatoriesSelected] = useState([]);
+
+  const [autoSignatureSelected, setAutoSignatureSelected] = useState([]);
+
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [dropDownAssign, setDropDownAssign] = useState({});
   const [errors, setErrors] = useState(null);
@@ -42,7 +46,7 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
       (fil) => fil.Status == "Approved"
     );
     const userApprover = itemData.Item_signatories.filter(
-      (fil) => fil.ID == user.ID
+      (fil) => fil.ID == user.ID && fil.Status == "Pending"
     )[0];
 
     if (
@@ -86,7 +90,7 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
     try {
       const res = await axiosPrivate.get("/signatories/get-all-signatory");
 
-      setSignatoriesSelected(res.data);
+      setAutoSignatureSelected(res.data);
     } catch (error) {
       handleApiError(error);
     }
@@ -108,7 +112,11 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
     get_all_users();
     if (itemData.Item_status == "Shipped" || itemData.Item_status == "Received")
       get_shipped_items();
-    if (!itemData.Item_signatories) get_all_signatories();
+    if (
+      !itemData.Item_signatories &&
+      itemData.Item_value.some((som) => som.Item_subcategory == "Documents")
+    )
+      get_all_signatories();
   }, []);
 
   const update_request = async (e) => {
@@ -168,6 +176,7 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
         (fil) => fil.ID == user.ID
       );
 
+      // NEED TO BE FIXED !!
       const data = {
         ID: itemData.ID,
         Item_value: itemData.Item_value,
@@ -248,6 +257,8 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
         ...prev,
         [position]: res.data,
       }));
+
+      return res.data;
     } catch (error) {
       handleApiError(error);
     }
@@ -605,7 +616,17 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
               )}
 
               {/* Assign Signatories */}
-              {!itemData.Item_signatories && (
+              {!itemData.Item_signatories &&
+              itemData.Item_value.some(
+                (som) => som.Item_subcategory == "Documents"
+              ) ? (
+                <AssignSignatoriesDocument
+                  setSignatoriesSelected={setSignatoriesSelected}
+                  autoSignatureSelected={autoSignatureSelected}
+                  setUploadedFiles={setUploadedFiles}
+                  uploadedFiles={uploadedFiles}
+                />
+              ) : !itemData.Item_signatories ? (
                 <AssignSignatories
                   setSignatoriesSelected={setSignatoriesSelected}
                   signatories={signatories}
@@ -613,6 +634,8 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
                   uploadedFiles={uploadedFiles}
                   signatoriesSelected={signatoriesSelected}
                 />
+              ) : (
+                ""
               )}
 
               {/* ASSIGNING OF ITEMS */}
@@ -630,6 +653,7 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
                     handleChangeTextArea={handleChangeTextArea}
                     handleChangeRadio={handleChangeRadio}
                     errors={errors}
+                    setItemState={setItemState}
                   />
                 )}
 
