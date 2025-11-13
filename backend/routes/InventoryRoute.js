@@ -28,6 +28,7 @@ const {
   ship_items,
   get_inventory_shipped_items,
   get_pending,
+  get_branch_items,
 } = require("../controller/InventoryController");
 const { uploadSupportingForms } = require("../middleware/multerUploading");
 
@@ -50,6 +51,7 @@ router.put("/update-item", protected, update_item);
 router.post("/replenish-stocks", protected, replenish_stock);
 router.delete("/delete-item/:ID", protected, delete_item);
 router.get("/get-filtered-items", protected, get_filtered_items);
+router.get("/get-branch-items", protected, get_branch_items);
 
 //INVENTORY REQUEST
 router.post("/create-request", protected, create_inventory_request);

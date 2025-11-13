@@ -21,6 +21,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import DocumentSettings from "./pages/SettingsPages/DocumentSettings";
 import SignatoriesSettings from "./pages/SettingsPages/SignatoriesSettings";
+import Inventory_Branch from "./pages/Inventory/Inventory_Branch";
 
 function App() {
   const { refreshToken, isLoading } = useAuth();
@@ -82,6 +83,9 @@ function App() {
             </Route>
             <Route element={<PrivateRoute route={"Procurement"} />}>
               <Route path="Procurement" element={<Procurement />} />
+            </Route>
+            <Route element={<PrivateRoute route={"InventoryBranch"} />}>
+              <Route path="Inventory_b" element={<Inventory_Branch />} />
             </Route>
           </Route>
         </Route>

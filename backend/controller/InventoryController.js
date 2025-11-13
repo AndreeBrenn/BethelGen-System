@@ -423,6 +423,68 @@ const delete_item = async (req, res, next) => {
   }
 };
 
+// @desc    Get item branch
+// @route   GET /inventory/branch-items
+// @access  Private
+
+const get_branch_items = async (req, res, next) => {
+  const { branch, searchTerm, limit, offset } = req.query;
+
+  try {
+    const whereClause = {
+      ...(searchTerm && {
+        [Op.or]: [
+          { ID: parseInt(searchTerm) || -1 },
+          { Item_name: { [Op.iLike]: `%${searchTerm}%` } },
+        ],
+      }),
+    };
+
+    const includeClause = {
+      model: Inventory_Stocks,
+      as: "inv_stocks",
+      where: { Item_branch: branch },
+      attributes: [],
+      required: true,
+    };
+
+    // Separate count and find
+    const [count, rows] = await Promise.all([
+      Inventory_Item.count({
+        where: whereClause,
+        include: [includeClause],
+        distinct: true,
+        col: "ID",
+      }),
+      Inventory_Item.findAll({
+        where: whereClause,
+        include: [includeClause],
+        attributes: {
+          include: [
+            [
+              sequelize.fn("COUNT", sequelize.col("inv_stocks.ID")),
+              "stock_count",
+            ],
+          ],
+        },
+        group: ["Inventory_Item.ID"], // ✅ This groups duplicates
+        limit,
+        offset,
+        subQuery: false,
+        order: [["Item_name", "ASC"]],
+        raw: true, // Get plain objects
+      }),
+    ]);
+
+    return res.status(200).json({
+      rows: rows,
+      count: count,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 //#region INVENTORY REQUEST
 
 // @desc    Add Request Inventory
@@ -907,6 +969,7 @@ module.exports = {
   update_item,
   replenish_stock,
   delete_item,
+  get_branch_items,
   create_inventory_request,
   get_inventory_request_personal,
   delete_request_inventory,

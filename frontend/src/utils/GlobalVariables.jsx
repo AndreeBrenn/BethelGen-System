@@ -19,6 +19,7 @@ export const permissionGroups = [
       "InventoryRequest",
       "InventoryAttributes",
       "Property",
+      "InventoryBranch",
     ],
   },
 ];

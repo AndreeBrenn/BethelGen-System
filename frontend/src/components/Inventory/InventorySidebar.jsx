@@ -3,7 +3,7 @@ import { decodedUser } from "../../utils/GlobalVariables";
 import { MdInventory, MdCategory } from "react-icons/md";
 import { NavLink } from "react-router-dom";
 import { IoMdPaper } from "react-icons/io";
-import { FaCartFlatbed } from "react-icons/fa6";
+import { FaCartFlatbed, FaWarehouse } from "react-icons/fa6";
 
 const InventorySidebar = () => {
   const decode = decodedUser();
@@ -31,6 +31,12 @@ const InventorySidebar = () => {
       icon: FaCartFlatbed,
       path: "Procurement",
       access: "Procurement",
+    },
+    {
+      title: "Inventory",
+      icon: FaWarehouse,
+      path: "Inventory_b",
+      access: "InventoryBranch",
     },
   ];
   return (
