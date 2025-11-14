@@ -444,7 +444,7 @@ const get_branch_items = async (req, res, next) => {
       model: Inventory_Stocks,
       as: "inv_stocks",
       where: { Item_branch: branch },
-      attributes: [],
+      attributes: [], // Keep empty for the main query
       required: true,
     };
 
@@ -458,7 +458,12 @@ const get_branch_items = async (req, res, next) => {
       }),
       Inventory_Item.findAll({
         where: whereClause,
-        include: [includeClause],
+        include: [
+          {
+            ...includeClause,
+            attributes: [], // Still keep empty to avoid selecting all stock fields
+          },
+        ],
         attributes: {
           include: [
             [
@@ -467,12 +472,12 @@ const get_branch_items = async (req, res, next) => {
             ],
           ],
         },
-        group: ["Inventory_Item.ID"], // ✅ This groups duplicates
+        group: ["Inventory_Item.ID"],
         limit,
         offset,
         subQuery: false,
         order: [["Item_name", "ASC"]],
-        raw: true, // Get plain objects
+        raw: true,
       }),
     ]);
 
@@ -480,6 +485,35 @@ const get_branch_items = async (req, res, next) => {
       rows: rows,
       count: count,
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get Stocks branch
+// @route   GET /inventory/branch-stocks
+// @access  Private
+
+const get_stocks_branch = async (req, res, next) => {
+  const { Item_ID, search, branch, offset, limit } = req.query;
+
+  try {
+    const result = await Inventory_Stocks.findAndCountAll({
+      where: {
+        Item_ID,
+        Item_branch: branch,
+        ...(search && {
+          [Op.or]: [
+            { Item_serial: { [Op.iLike]: `%${search}%` } },
+            { Item_branch: { [Op.iLike]: `%${search}%` } },
+          ],
+        }),
+      },
+      offset,
+      limit,
+    });
+
+    return res.status(200).json(result);
   } catch (error) {
     next(error);
   }
@@ -576,6 +610,65 @@ const delete_request_inventory = async (req, res, next) => {
 // @route   GET /inventory/get-all-request
 // @access  Private
 
+// const get_all_request = async (req, res, next) => {
+//   const { search, offset, limit } = req.query;
+
+//   try {
+//     let whereClause = {};
+
+//     if (search) {
+//       whereClause = {
+//         [Op.or]: [
+//           { Item_branch: { [Op.iLike]: `%${search}%` } },
+//           Sequelize.where(
+//             Sequelize.cast(Sequelize.col("Inventory_Request.ID"), "varchar"),
+//             { [Op.iLike]: `%${search}%` }
+//           ),
+//           { "$Item_userID.FirstName$": { [Op.iLike]: `%${search}%` } },
+//           { "$Item_userID.LastName$": { [Op.iLike]: `%${search}%` } },
+//           { "$Item_userID.Department$": { [Op.iLike]: `%${search}%` } },
+//         ],
+//       };
+//     }
+
+//     const { count, rows } = await Inventory_Request.findAndCountAll({
+//       include: [
+//         {
+//           model: Users,
+//           as: "Item_userID",
+//           attributes: [
+//             "LastName",
+//             "FirstName",
+//             "Role",
+//             "Email",
+//             "Department",
+//             "Position",
+//           ],
+//           required: false,
+//         },
+//         {
+//           model: Inventory_Stocks,
+//           as: "Inv_request",
+//           required: false,
+//         },
+//       ],
+//       where: whereClause,
+//       limit:  (limit),
+//       offset: parseInt(offset),
+//       order: [["ID", "DESC"]],
+//       distinct: true,
+//       subQuery: false,
+//     });
+
+//     const result = { count, rows };
+
+//     return res.status(200).json(result);
+//   } catch (error) {
+//     console.error("Error in get_all_request:", error);
+//     next(error);
+//   }
+// };
+
 const get_all_request = async (req, res, next) => {
   const { search, offset, limit } = req.query;
 
@@ -597,34 +690,45 @@ const get_all_request = async (req, res, next) => {
       };
     }
 
-    const { count, rows } = await Inventory_Request.findAndCountAll({
-      include: [
-        {
-          model: Users,
-          as: "Item_userID",
-          attributes: [
-            "LastName",
-            "FirstName",
-            "Role",
-            "Email",
-            "Department",
-            "Position",
-          ],
-          required: false,
-        },
-        {
-          model: Inventory_Stocks,
-          as: "Inv_request",
-          required: false,
-        },
-      ],
-      where: whereClause,
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      order: [["ID", "DESC"]],
-      distinct: true,
-      subQuery: false,
-    });
+    const includeClause = [
+      {
+        model: Users,
+        as: "Item_userID",
+        attributes: [
+          "LastName",
+          "FirstName",
+          "Role",
+          "Email",
+          "Department",
+          "Position",
+        ],
+        required: false,
+      },
+      {
+        model: Inventory_Stocks,
+        as: "Inv_request",
+        required: false,
+      },
+    ];
+
+    // Separate count and findAll
+    const [count, rows] = await Promise.all([
+      Inventory_Request.count({
+        where: whereClause,
+        include: includeClause,
+        distinct: true,
+        col: "ID",
+      }),
+      Inventory_Request.findAll({
+        include: includeClause,
+        where: whereClause,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        order: [["ID", "DESC"]],
+        subQuery: true, // Changed to true
+        distinct: true, // Added this back
+      }),
+    ]);
 
     const result = { count, rows };
 
@@ -970,6 +1074,7 @@ module.exports = {
   replenish_stock,
   delete_item,
   get_branch_items,
+  get_stocks_branch,
   create_inventory_request,
   get_inventory_request_personal,
   delete_request_inventory,

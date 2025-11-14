@@ -18,6 +18,11 @@ module.exports = (sequelize, Datatypes) => {
       type: Datatypes.STRING,
       allowNull: true,
     },
+    Item_document_category: {
+      type: Datatypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
   });
 
   Inventory_Stocks.associate = (models) => {

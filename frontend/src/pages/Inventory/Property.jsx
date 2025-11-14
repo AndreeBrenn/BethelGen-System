@@ -258,7 +258,11 @@ export default function Property() {
                             >
                               <button
                                 onClick={() =>
-                                  setView({ ID: item.ID, name: item.Item_name })
+                                  setView({
+                                    ID: item.ID,
+                                    name: item.Item_name,
+                                    Item_subcategory: item.Item_subcategory,
+                                  })
                                 }
                                 className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                               >

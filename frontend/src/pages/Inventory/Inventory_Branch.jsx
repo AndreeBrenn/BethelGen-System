@@ -7,15 +7,14 @@ import usePrivateAxios from "../../hooks/useProtectedAxios";
 import moment from "moment";
 import { MdMoreVert, MdRemoveRedEye, MdSearch } from "react-icons/md";
 import { FiEdit, FiTrash2, FiPackage } from "react-icons/fi";
-import ViewItemPropertyModal from "../../modals/InventoryModal/ViewItemPropertyModal";
 import EditPropertyModal from "../../modals/InventoryModal/EditPropertyModal";
 import ReplenishPropertyModal from "../../modals/InventoryModal/ReplenishPropertyModal";
 import React_Paginate from "../../utils/React_Paginate";
 import { FaSearch } from "react-icons/fa";
 import { decodedUser } from "../../utils/GlobalVariables";
+import ViewItemPropertyBranchModal from "../../modals/InventoryModal/ViewItemPropertyBranchModal";
 
 export default function Inventory_Branch() {
-  const [activeTab, setActiveTab] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const axiosPrivate = usePrivateAxios();
@@ -55,7 +54,7 @@ export default function Inventory_Branch() {
     } catch (error) {
       handleApiError(error);
     }
-  }, [itemOffset, itemsPerPage, appliedSearch, activeTab]);
+  }, [itemOffset, itemsPerPage, appliedSearch]);
 
   useEffect(() => {
     get_items();
@@ -90,10 +89,10 @@ export default function Inventory_Branch() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Property Inventory
+                Branch Inventory
               </h1>
               <p className="text-gray-600 mt-1">
-                Manage your assets and documents
+                Manage your assets based on your branch
               </p>
             </div>
             <button
@@ -109,30 +108,6 @@ export default function Inventory_Branch() {
         {/* Main Content Card */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           {/* Tabs */}
-          <div className="border-b border-gray-200 mb-6">
-            <div className="flex gap-6">
-              <button
-                onClick={() => setActiveTab(null)}
-                className={`pb-3 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
-                  activeTab === null
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                All Assets
-              </button>
-              <button
-                onClick={() => setActiveTab("Documents")}
-                className={`pb-3 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
-                  activeTab === "Documents"
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                Documents
-              </button>
-            </div>
-          </div>
 
           {/* Search Bar */}
           <div className="bg-white border border-slate-200 rounded-lg p-4 mb-4 shadow-sm">
@@ -233,7 +208,7 @@ export default function Inventory_Branch() {
                       </td>
 
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {item.available_count}
+                        {item.stock_count}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {item.Item_origin_branch}
@@ -268,13 +243,15 @@ export default function Inventory_Branch() {
                                 <span>View Details</span>
                               </button>
 
-                              <button
-                                onClick={() => setEdit(item)}
-                                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                              >
-                                <FiEdit className="text-lg text-green-600" />
-                                <span>Edit</span>
-                              </button>
+                              {item.Item_origin_branch == user.Branch && (
+                                <button
+                                  onClick={() => setEdit(item)}
+                                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                >
+                                  <FiEdit className="text-lg text-green-600" />
+                                  <span>Edit</span>
+                                </button>
+                              )}
 
                               <button
                                 onClick={() => setReplenish(item)}
@@ -286,13 +263,15 @@ export default function Inventory_Branch() {
 
                               <div className="border-t border-gray-100 my-1"></div>
 
-                              <button
-                                onClick={() => setDeleteItem(item.ID)}
-                                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                              >
-                                <FiTrash2 className="text-lg" />
-                                <span>Delete</span>
-                              </button>
+                              {item.Item_origin_branch == user.Branch && (
+                                <button
+                                  onClick={() => setDeleteItem(item.ID)}
+                                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                >
+                                  <FiTrash2 className="text-lg" />
+                                  <span>Delete</span>
+                                </button>
+                              )}
                             </div>
                           )}
                         </div>
@@ -316,7 +295,7 @@ export default function Inventory_Branch() {
 
       {/* Modals */}
 
-      {view && <ViewItemPropertyModal ID_data={view} setView={setView} />}
+      {view && <ViewItemPropertyBranchModal ID_data={view} setView={setView} />}
       {edit && (
         <EditPropertyModal data={edit} setEdit={setEdit} trigger={get_items} />
       )}
