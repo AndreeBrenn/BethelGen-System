@@ -408,6 +408,8 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
     };
   };
 
+  console.log(itemData);
+
   const ship_items = async (e) => {
     e.preventDefault();
 

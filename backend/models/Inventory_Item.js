@@ -25,6 +25,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true,
     },
+    policy_code: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   });
 
   Inventory_Item.associate = (models) => {

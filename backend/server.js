@@ -20,11 +20,11 @@ app.use("/users", require("./routes/UserRoute"));
 app.use("/inventory", require("./routes/InventoryRoute"));
 app.use("/documents", require("./routes/DocumentRoute"));
 app.use("/signatories", require("./routes/SignatoryRoute"));
+app.use("/branch", require("./routes/BranchRoute"));
 
 app.use(errorHandler);
 
 //ACCESS LOCAL FILES
-
 app.use("/media", express.static("media"));
 
 //SERVER FUNCTION TO START

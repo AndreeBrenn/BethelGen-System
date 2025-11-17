@@ -10,7 +10,12 @@ export const decodedUser = () => {
 export const permissionGroups = [
   {
     name: "Settings",
-    children: ["Admin Settings", "Document Settings", "Signatory Settings"],
+    children: [
+      "Admin Settings",
+      "Document Settings",
+      "Signatory Settings",
+      "Branch Settings",
+    ],
   },
   {
     name: "Inventory",

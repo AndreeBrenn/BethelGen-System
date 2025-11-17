@@ -22,6 +22,7 @@ import "react-toastify/dist/ReactToastify.css";
 import DocumentSettings from "./pages/SettingsPages/DocumentSettings";
 import SignatoriesSettings from "./pages/SettingsPages/SignatoriesSettings";
 import Inventory_Branch from "./pages/Inventory/Inventory_Branch";
+import BranchSettings from "./pages/SettingsPages/BranchSettings";
 
 function App() {
   const { refreshToken, isLoading } = useAuth();
@@ -65,6 +66,9 @@ function App() {
             </Route>
             <Route element={<PrivateRoute route={"Signatory Settings"} />}>
               <Route path="Signatory" element={<SignatoriesSettings />} />
+            </Route>
+            <Route element={<PrivateRoute route={"Branch Settings"} />}>
+              <Route path="Branch" element={<BranchSettings />} />
             </Route>
           </Route>
         </Route>

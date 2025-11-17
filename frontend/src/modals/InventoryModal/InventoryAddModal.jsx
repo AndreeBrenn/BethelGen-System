@@ -11,6 +11,7 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
     Item_subcategory: { ID: "", name: "" },
     Item_classification: "",
     Item_document_category: "",
+    policy_code: "",
   });
   const [dropDownData, setDropDownData] = useState([]);
   const [stocksData, setStocksData] = useState({
@@ -66,7 +67,16 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
           item_subcategory: inputFields.Item_subcategory.name,
           item_classification: inputFields.Item_classification,
           item_origin_branch: user.Branch,
-          serials: stocksData.serial_num,
+          policy_code: inputFields.policy_code,
+          serials: stocksData.serial_num.map((data) => {
+            return {
+              ...data,
+              Item_serial:
+                inputFields.policy_code +
+                data.Item_serial.toString().padStart(7, "0"),
+              Item_document_category: inputFields.Item_document_category,
+            };
+          }),
         };
 
         const res = await axiosPrivate.post("/inventory/create-item", data);
@@ -91,9 +101,13 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
           item_subcategory: inputFields.Item_subcategory.name,
           item_classification: inputFields.Item_classification,
           item_origin_branch: user.Branch,
+          policy_code: inputFields.policy_code,
           serials: [...Array(Math.max(0, endNum - startNum + 1)).keys()].map(
             (i) => ({
-              Item_serial: startNum + i,
+              Item_document_category: inputFields.Item_document_category,
+              Item_serial:
+                inputFields.policy_code +
+                (startNum + i).toString().padStart(7, "0"),
               Item_branch: null,
               Item_status: "Available",
             })
@@ -312,6 +326,24 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
               </div>
             )}
           </div>
+          {inputFields.Item_subcategory.name == "Documents" && (
+            <div className="md:col-span-2 mt-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Policy Code:
+              </label>
+              <input
+                required
+                onChange={(e) =>
+                  setInputFields({
+                    ...inputFields,
+                    policy_code: e.target.value,
+                  })
+                }
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g G(1), G(2)"
+              />
+            </div>
+          )}
           <div className="flex mt-4">
             <input
               onChange={() => setRadioButton(1)}

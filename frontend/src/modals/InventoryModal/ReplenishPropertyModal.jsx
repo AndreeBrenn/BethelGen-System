@@ -25,8 +25,13 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
           return;
         }
 
-        const manualInput_stocksData = stocksData.serial_num.map((data) => {
-          return { ...data, Item_document_category: generatedBy };
+        const manualInput_stocksData = stocksData.serial_num.map((item) => {
+          return {
+            ...item,
+            Item_document_category: generatedBy,
+            Item_serial:
+              data.policy_code + item.Item_serial.toString().padStart(7, "0"),
+          };
         });
 
         const res = await axiosPrivate.post(
@@ -58,7 +63,9 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
             )
           ).keys(),
         ].map((i) => ({
-          Item_serial: parseInt(serialRange.start) + i,
+          Item_serial:
+            data.policy_code +
+            (parseInt(serialRange.start) + i).toString().padStart(7, "0"),
           Item_branch: null,
           Item_status: "Available",
           Item_ID: data.ID,

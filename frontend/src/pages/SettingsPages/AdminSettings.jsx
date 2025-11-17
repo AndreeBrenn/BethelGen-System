@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { MdPeople, MdEdit, MdDelete, MdAdd, MdSearch } from "react-icons/md";
 import { FaUserShield, FaUserTie, FaUser, FaSearch } from "react-icons/fa";
 import CreateUserModal from "../../modals/SettingsModal/CreateUserModal";
@@ -21,36 +21,26 @@ const AdminSettings = () => {
   const [itemOffset, setItemOffset] = useState(0);
   const [count, setCount] = useState(0);
 
-  useEffect(() => {
-    let isMounted = true;
-    const controller = new AbortController();
-
-    const getAllUsers = async () => {
+  const getAllUsers = useCallback(async () => {
+    try {
       const res = await axiosPrivate.get(`/users/get-users`, {
         params: {
-          search: searchTerm,
+          search: appliedSearch,
           itemsPerPage,
           offset: itemOffset,
         },
       });
 
-      if (isMounted) {
-        setUsers(res.data.rows);
-        setCount(res.data.count);
-      }
-    };
-
-    getAllUsers().catch((error) => {
-      if (isMounted && error.name !== "CanceledError") {
-        handleApiError(error);
-      }
-    });
-
-    return () => {
-      isMounted = false;
-      controller.abort();
-    };
+      setUsers(res.data.rows);
+      setCount(res.data.count);
+    } catch (error) {
+      handleApiError(error);
+    }
   }, [itemOffset, itemsPerPage, appliedSearch]);
+
+  useEffect(() => {
+    getAllUsers();
+  }, [getAllUsers]);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -149,7 +139,6 @@ const AdminSettings = () => {
             onClick={() => {
               setAppliedSearch("");
               setSearchTerm("");
-              setTrigger((prev) => prev + 1);
             }}
             className="bg-red-600 text-white px-3 rounded-lg ml-3 cursor-pointer"
           >

@@ -4,6 +4,7 @@ import { MdAdminPanelSettings, MdBusiness, MdSecurity } from "react-icons/md";
 import { decodedUser } from "../../utils/GlobalVariables";
 import { LuLibrary } from "react-icons/lu";
 import { AiFillSignature } from "react-icons/ai";
+import { FaSitemap } from "react-icons/fa6";
 
 const SettingsSidebar = () => {
   const decode = decodedUser();
@@ -25,6 +26,12 @@ const SettingsSidebar = () => {
       icon: AiFillSignature,
       path: "/Settings/Signatory",
       access: "Signatory Settings",
+    },
+    {
+      title: "Branches",
+      icon: FaSitemap,
+      path: "/Settings/Branch",
+      access: "Branch Settings",
     },
   ];
 
