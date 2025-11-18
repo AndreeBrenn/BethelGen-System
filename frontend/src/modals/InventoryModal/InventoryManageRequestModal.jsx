@@ -96,22 +96,22 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
     }
   }, []);
 
-  const get_shipped_items = useCallback(async () => {
-    try {
-      const res = await axiosPrivate.post("/inventory/get-shipped-items", {
-        ids: [...new Set(itemData.Inv_request.map((data) => data.Item_ID))],
-      });
+  // const get_shipped_items = useCallback(async () => {
+  //   try {
+  //     const res = await axiosPrivate.post("/inventory/get-shipped-items", {
+  //       ids: [...new Set(itemData.Inv_request.map((data) => data.Item_ID))],
+  //     });
 
-      setInventory(res.data);
-    } catch (error) {
-      handleApiError(error);
-    }
-  }, []);
+  //     setInventory(res.data);
+  //   } catch (error) {
+  //     handleApiError(error);
+  //   }
+  // }, []);
 
   useEffect(() => {
     get_all_users();
-    if (itemData.Item_status == "Shipped" || itemData.Item_status == "Received")
-      get_shipped_items();
+    // if (itemData.Item_status == "Shipped" || itemData.Item_status == "Received")
+    //   get_shipped_items();
     if (
       !itemData.Item_signatories &&
       itemData.Item_value.some((som) => som.Item_subcategory == "Documents")
@@ -206,7 +206,6 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
       toast.success("Item is successfully processed", toastObjects);
       onClose();
     } catch (error) {
-      console.log(error);
       handleApiError(error);
     }
   };
@@ -266,20 +265,20 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
 
   const [itemState, setItemState] = useState([]);
 
-  const handleChangeDropDown = (index, itemPicked, itemName) => {
+  const handleChangeDropDown = (index, itemPicked, itemName, quantity) => {
     const findId = itemState.filter((fil) => fil.position == index);
 
     if (findId.length == 0)
       setItemState((prev) => [
         ...prev,
-        { position: index, item_ID: itemPicked, method: 1, itemName },
+        { position: index, item_ID: itemPicked, method: 1, itemName, quantity },
       ]);
 
     const newArray = itemState.filter((fil) => fil.position != index);
 
     setItemState([
       ...newArray,
-      { position: index, item_ID: itemPicked, method: 1, itemName },
+      { position: index, item_ID: itemPicked, method: 1, itemName, quantity },
     ]);
   };
 
@@ -297,6 +296,10 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
         ...newData,
         { ...findId, method: value, serialStart: 0, serialEnd: 0 },
       ]);
+    }
+
+    if (value == 3) {
+      setItemState([...newData, { ...findId, method: value }]);
     }
   };
 
@@ -344,6 +347,10 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
       count = inputTextArray.length;
+    }
+
+    if (item.method == 3 && item.serials) {
+      count = item.serials.length;
     }
 
     if (item.method === 2) {
@@ -408,8 +415,6 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
     };
   };
 
-  console.log(itemData);
-
   const ship_items = async (e) => {
     e.preventDefault();
 
@@ -455,17 +460,37 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
         if (item.method == 1) {
           const inputTextArray = item.inputText.split(",");
           inputTextArray.forEach((serials) =>
-            temp.push({ item_ID: item.item_ID, serials: serials.trim() })
+            temp.push({
+              item_ID: item.item_ID,
+              serials: (item.policy_code ?? "") + serials.trim(),
+            })
           );
         }
 
         if (item.method == 2) {
+          // Get padding length from the original string before parsing
+          const paddingLength = item.serialStart.trim().length;
           const start = parseInt(item.serialStart);
           const end = parseInt(item.serialEnd);
 
           for (let i = start; i <= end; i++) {
-            temp.push({ item_ID: item.item_ID, serials: i });
+            temp.push({
+              item_ID: item.item_ID,
+              serials:
+                (item.policy_code ?? "") +
+                i.toString().padStart(paddingLength, "0"),
+            });
           }
+        }
+
+        if (item.method == 3) {
+          // Fix: Loop through the serials array
+          item.serials.forEach((serial) => {
+            temp.push({
+              item_ID: item.item_ID,
+              serials: serial, // Add policy_code if needed
+            });
+          });
         }
       });
 
@@ -498,7 +523,6 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
       toast.success("Items is successfully shipped", toastObjects);
       onClose();
     } catch (error) {
-      console.log(error);
       handleApiError(error);
       if (
         error.status == 404 &&
@@ -574,7 +598,6 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
 
       onClose();
     } catch (error) {
-      console.log(error);
       handleApiError(error);
     }
   };
@@ -614,7 +637,7 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
               {/* SHIPPED ITEMS */}
               {(itemData.Item_status == "Shipped" ||
                 itemData.Item_status == "Received") && (
-                <ShippedItems itemData={itemData} inventory={inventory} />
+                <ShippedItems itemData={itemData} />
               )}
 
               {/* Assign Signatories */}

@@ -29,8 +29,7 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
           return {
             ...item,
             Item_document_category: generatedBy,
-            Item_serial:
-              data.policy_code + item.Item_serial.toString().padStart(7, "0"),
+            Item_serial: (data.policy_code ?? "") + item.Item_serial,
           };
         });
 
@@ -62,15 +61,20 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
               parseInt(serialRange.end) - parseInt(serialRange.start) + 1
             )
           ).keys(),
-        ].map((i) => ({
-          Item_serial:
-            data.policy_code +
-            (parseInt(serialRange.start) + i).toString().padStart(7, "0"),
-          Item_branch: null,
-          Item_status: "Available",
-          Item_ID: data.ID,
-          Item_document_category: generatedBy,
-        }));
+        ].map((i) => {
+          const paddingLength = serialRange.start.toString().trim().length;
+          const serialNumber = (parseInt(serialRange.start) + i)
+            .toString()
+            .padStart(paddingLength, "0");
+
+          return {
+            Item_serial: (data.policy_code ?? "") + serialNumber,
+            Item_branch: null,
+            Item_status: "Available",
+            Item_ID: data.ID,
+            Item_document_category: generatedBy,
+          };
+        });
 
         const res = await axiosPrivate.post(
           "/inventory/replenish-stocks",

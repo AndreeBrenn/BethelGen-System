@@ -358,6 +358,7 @@ const get_stocks = async (req, res, next) => {
       },
       offset,
       limit,
+      order: [["Item_serial", "ASC"]],
     });
 
     return res.status(200).json(result);
@@ -691,6 +692,27 @@ const get_all_request = async (req, res, next) => {
       };
     }
 
+    // const includeClause = [
+    //   {
+    //     model: Users,
+    //     as: "Item_userID",
+    //     attributes: [
+    //       "LastName",
+    //       "FirstName",
+    //       "Role",
+    //       "Email",
+    //       "Department",
+    //       "Position",
+    //     ],
+    //     required: false,
+    //   },
+    //   {
+    //     model: Inventory_Stocks,
+    //     as: "Inv_request",
+    //     required: false,
+    //   },
+    // ];
+
     const includeClause = [
       {
         model: Users,
@@ -709,6 +731,9 @@ const get_all_request = async (req, res, next) => {
         model: Inventory_Stocks,
         as: "Inv_request",
         required: false,
+        separate: true, // This runs a separate query and prevents cartesian product
+        limit: 10, // Limit child records per parent
+        order: [["createdAt", "DESC"]], // Optional: order the child records
       },
     ];
 
@@ -898,6 +923,45 @@ const get_pending = async (req, res, next) => {
 //#endregion
 
 //#region SHIPMENT
+
+// @desc    Get automatic serial.
+// @route   GET /inventory/get-serial-automatic
+// @access  Private
+
+const get_serial_automatic = async (req, res, next) => {
+  const { Item_ID, limit } = req.query;
+  try {
+    const result = await Inventory_Stocks.findAll({
+      where: { Item_ID: Item_ID, Item_status: "Available" },
+      limit,
+      order: [["Item_serial", "ASC"]],
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get stocks.
+// @route   GET /inventory/get-stocks-for-ship-or-received
+// @access  Private
+
+const get_shipped_or_received_items = async (req, res, next) => {
+  const { offset, limit, request_ID } = req.query;
+
+  try {
+    const result = await Inventory_Stocks.findAndCountAll({
+      where: { Inv_requestID: request_ID },
+      limit,
+      offset,
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
 
 /* THIS REGION ALLOWS MULTIPLE CALL TO DB BECAUSE OF THE RELATIONSHIP BETWEEN 3 TABLES
   INVENTORY_ITEM
@@ -1133,77 +1197,90 @@ const ship_items = async (req, res, next) => {
       });
     }
 
-    // 5. Use temporary table for bulk update (much faster for large datasets)
-    await sequelize.query(
-      `
-      CREATE TEMP TABLE temp_ship_items (
-        item_id INT,
-        item_serial TEXT
-      ) ON COMMIT DROP
-      `
-    );
+    // 5. Use transaction to keep temp table alive
+    const transaction = await sequelize.transaction();
 
-    // 6. Batch insert into temp table (chunk to avoid parameter limits)
-    const BATCH_SIZE = 1000;
-    for (let i = 0; i < itemData.items.length; i += BATCH_SIZE) {
-      const batch = itemData.items.slice(i, i + BATCH_SIZE);
-      const values = batch
-        .map((_, idx) => `(:itemId${idx}, :serial${idx})`)
-        .join(", ");
-
-      const replacements = {};
-      batch.forEach((item, idx) => {
-        replacements[`itemId${idx}`] = item.Item_ID;
-        replacements[`serial${idx}`] = item.Item_serial;
-      });
-
+    try {
+      // Create temp table within transaction
       await sequelize.query(
-        `INSERT INTO temp_ship_items (item_id, item_serial) VALUES ${values}`,
-        { replacements }
+        `
+        CREATE TEMP TABLE temp_ship_items (
+          item_id INT,
+          item_serial TEXT
+        ) ON COMMIT DROP
+        `,
+        { transaction }
       );
-    }
 
-    // 7. Single UPDATE using JOIN with temp table
-    await sequelize.query(
-      `
-      UPDATE "Inventory_Stocks" AS inv
-      SET
-        "Item_status" = :status,
-        "Item_branch" = :branch,
-        "Inv_requestID" = :requestId
-      FROM temp_ship_items AS temp
-      WHERE inv."Item_ID" = temp.item_id
-        AND inv."Item_serial" = temp.item_serial
-      `,
-      {
-        replacements: {
-          status: "Unavailable",
-          branch: itemData.branch,
-          requestId: itemData.Inv_requestID,
-        },
-        type: QueryTypes.UPDATE,
+      // 6. Batch insert into temp table (chunk to avoid parameter limits)
+      const BATCH_SIZE = 1000;
+      for (let i = 0; i < itemData.items.length; i += BATCH_SIZE) {
+        const batch = itemData.items.slice(i, i + BATCH_SIZE);
+        const values = batch
+          .map((_, idx) => `(:itemId${idx}, :serial${idx})`)
+          .join(", ");
+
+        const replacements = {};
+        batch.forEach((item, idx) => {
+          replacements[`itemId${idx}`] = item.Item_ID;
+          replacements[`serial${idx}`] = item.Item_serial;
+        });
+
+        await sequelize.query(
+          `INSERT INTO temp_ship_items (item_id, item_serial) VALUES ${values}`,
+          { replacements, transaction }
+        );
       }
-    );
 
-    // 8. Update request status
-    await Inventory_Request.update(
-      {
-        Item_signatories: itemData.Item_signatories,
-        Item_status: "Shipped",
-      },
-      { where: { ID: itemData.Inv_requestID } }
-    );
+      // 7. Single UPDATE using JOIN with temp table
+      await sequelize.query(
+        `
+        UPDATE "Inventory_Stocks" AS inv
+        SET
+          "Item_status" = :status,
+          "Item_branch" = :branch,
+          "Inv_requestID" = :requestId
+        FROM temp_ship_items AS temp
+        WHERE inv."Item_ID" = temp.item_id
+          AND inv."Item_serial" = temp.item_serial
+        `,
+        {
+          replacements: {
+            status: "Unavailable",
+            branch: itemData.branch,
+            requestId: itemData.Inv_requestID,
+          },
+          type: QueryTypes.UPDATE,
+          transaction,
+        }
+      );
 
-    return res.status(200).json({
-      message: "Items shipped successfully",
-      count: itemData.items.length,
-    });
+      // 8. Update request status
+      await Inventory_Request.update(
+        {
+          Item_signatories: itemData.Item_signatories,
+          Item_status: "Shipped",
+        },
+        { where: { ID: itemData.Inv_requestID }, transaction }
+      );
+
+      // Commit transaction
+      await transaction.commit();
+
+      return res.status(200).json({
+        message: "Items shipped successfully",
+        count: itemData.items.length,
+      });
+    } catch (error) {
+      // Rollback on error
+      await transaction.rollback();
+      throw error;
+    }
   } catch (error) {
     console.error("Error in ship_items:", error);
     next(error);
   }
 };
-
 //#endregion
 
 module.exports = {
@@ -1234,4 +1311,6 @@ module.exports = {
   ship_items,
   get_inventory_shipped_items,
   get_pending,
+  get_shipped_or_received_items,
+  get_serial_automatic,
 };

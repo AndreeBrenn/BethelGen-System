@@ -71,9 +71,7 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
           serials: stocksData.serial_num.map((data) => {
             return {
               ...data,
-              Item_serial:
-                inputFields.policy_code +
-                data.Item_serial.toString().padStart(7, "0"),
+              Item_serial: (inputFields.policy_code ?? "") + data.Item_serial,
               Item_document_category: inputFields.Item_document_category,
             };
           }),
@@ -83,6 +81,41 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
       }
 
       if (radioButton == 2) {
+        // if (
+        //   parseInt(serialRange.start) > parseInt(serialRange.end) ||
+        //   serialRange.start.trim() == "" ||
+        //   serialRange.end.trim() == ""
+        // ) {
+        //   alert("Invalid Range");
+        //   return;
+        // }
+
+        // const startNum = Number(serialRange.start);
+        // const endNum = Number(serialRange.end);
+
+        // const data = {
+        //   item_name: inputFields.Item_name,
+        //   item_category: inputFields.Item_category.name,
+        //   item_subcategory: inputFields.Item_subcategory.name,
+        //   item_classification: inputFields.Item_classification,
+        //   item_origin_branch: user.Branch,
+        //   policy_code: inputFields.policy_code,
+        //   serials: [...Array(Math.max(0, endNum - startNum + 1)).keys()].map(
+        //     (i) => {
+        //       const paddingLength = startNum.toString().length;
+
+        //       return {
+        //         Item_document_category: inputFields.Item_document_category,
+        //         Item_serial:
+        //           inputFields.policy_code +
+        //           (startNum + i).toString().padStart(paddingLength, "0"),
+        //         Item_branch: null,
+        //         Item_status: "Available",
+        //       };
+        //     }
+        //   ),
+        // };
+
         if (
           parseInt(serialRange.start) > parseInt(serialRange.end) ||
           serialRange.start.trim() == "" ||
@@ -91,6 +124,8 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
           alert("Invalid Range");
           return;
         }
+
+        const paddingLength = serialRange.start.trim().length;
 
         const startNum = Number(serialRange.start);
         const endNum = Number(serialRange.end);
@@ -107,7 +142,7 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
               Item_document_category: inputFields.Item_document_category,
               Item_serial:
                 inputFields.policy_code +
-                (startNum + i).toString().padStart(7, "0"),
+                (startNum + i).toString().padStart(paddingLength, "0"),
               Item_branch: null,
               Item_status: "Available",
             })

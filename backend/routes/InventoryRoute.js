@@ -30,6 +30,8 @@ const {
   get_pending,
   get_branch_items,
   get_stocks_branch,
+  get_shipped_or_received_items,
+  get_serial_automatic,
 } = require("../controller/InventoryController");
 const { uploadSupportingForms } = require("../middleware/multerUploading");
 
@@ -70,5 +72,11 @@ router.get("/pending-for-me", protected, get_pending);
 //SHIP ITEMS
 router.put("/ship-items", protected, ship_items);
 router.post("/get-shipped-items", protected, get_inventory_shipped_items);
+router.get(
+  "/get-stocks-for-ship-or-received",
+  protected,
+  get_shipped_or_received_items
+);
+router.get("/get-serial-automatic", protected, get_serial_automatic);
 
 module.exports = router;

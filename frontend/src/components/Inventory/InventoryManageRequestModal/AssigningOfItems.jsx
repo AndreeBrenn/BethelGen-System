@@ -1,5 +1,6 @@
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { FaBoxOpen } from "react-icons/fa";
+import usePrivateAxios from "../../../hooks/useProtectedAxios";
 
 const AssigningOfItems = ({
   itemData,
@@ -14,6 +15,8 @@ const AssigningOfItems = ({
   errors,
   setItemState,
 }) => {
+  const axiosPrivate = usePrivateAxios();
+  const fetchedPositionsRef = useRef(new Set()); // Track what's been fetched
   useEffect(() => {
     const get_item = async () => {
       const promises = itemData.Item_value.map((data, index) => {
@@ -34,10 +37,12 @@ const AssigningOfItems = ({
         );
 
         return {
+          policy_code: data_ID.policy_code,
           position: index,
           item_ID: data_ID.ID,
           method: 1,
           itemName: data_ID.Item_name,
+          quantity: data.Item_quantity,
         };
       });
 
@@ -46,7 +51,65 @@ const AssigningOfItems = ({
     };
     get_item();
   }, []);
+  console.log(itemData);
+  console.log(itemState);
+  // This will run every time itemState changes
+  useEffect(() => {
+    const get_serial = async () => {
+      // Find items with method 3 that haven't been fetched yet
+      const itemsToFetch = itemState.filter(
+        (item) =>
+          item.method === 3 && !fetchedPositionsRef.current.has(item.position)
+      );
 
+      if (itemsToFetch.length === 0) return;
+
+      try {
+        const promises = itemsToFetch.map((item) => {
+          // Mark as being fetched immediately
+          fetchedPositionsRef.current.add(item.position);
+
+          return axiosPrivate
+            .get("/inventory/get-serial-automatic", {
+              params: {
+                Item_ID: item.item_ID,
+                limit: item.quantity,
+              },
+            })
+            .then((res) => ({
+              position: item.position,
+              serials: res.data.map((data) => data.Item_serial),
+            }));
+        });
+
+        const results = await Promise.all(promises);
+        console.log("Fetched serials:", results);
+
+        setItemState((prev) =>
+          prev.map((item) => {
+            const result = results.find((r) => r.position === item.position);
+            if (result) {
+              return {
+                ...item,
+                serials: result.serials,
+              };
+            }
+            return item;
+          })
+        );
+      } catch (error) {
+        console.error("Error fetching serials:", error);
+        // Remove failed items from ref so they can be retried
+        itemsToFetch.forEach((item) => {
+          fetchedPositionsRef.current.delete(item.position);
+        });
+      }
+    };
+
+    if (itemState && itemState.length > 0) {
+      get_serial();
+    }
+  }, [itemState, axiosPrivate]);
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 shadow-sm">
       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -86,7 +149,8 @@ const AssigningOfItems = ({
                     handleChangeDropDown(
                       index,
                       e.target.value,
-                      e.target.selectedOptions[0].dataset.itemname
+                      e.target.selectedOptions[0].dataset.itemname,
+                      data.Item_quantity
                     )
                   }
                   onClick={() =>
@@ -151,6 +215,21 @@ const AssigningOfItems = ({
               />{" "}
               <span className="text-sm font-medium text-gray-700 mx-2">
                 Serial range
+              </span>
+              <input
+                onChange={(e) => handleChangeRadio(index, 3)}
+                checked={
+                  itemState.filter(
+                    (fil) => fil.method == 3 && fil.position == index
+                  ).length != 0
+                }
+                disabled={
+                  itemState.filter((fil) => fil.position == index).length == 0
+                }
+                type="radio"
+              />{" "}
+              <span className="text-sm font-medium text-gray-700 mx-2">
+                Automatic Serializer
               </span>
             </div>
 
