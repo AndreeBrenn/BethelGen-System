@@ -24,6 +24,8 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
     end: 0,
   });
 
+  const [loading, setLoading] = useState(false);
+
   const user = decodedUser();
   const axiosPrivate = usePrivateAxios();
 
@@ -54,6 +56,7 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
   const submit_data = async (e) => {
     e.preventDefault();
 
+    setLoading(true);
     try {
       if (radioButton == 1) {
         if (stocksData.quantity != stocksData.serial_num.length) {
@@ -169,6 +172,8 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
       alert("Data is Submitted");
     } catch (error) {
       handleApiError(error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -519,6 +524,7 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
               Cancel
             </button>
             <button
+              disabled={loading}
               type="submit"
               className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >

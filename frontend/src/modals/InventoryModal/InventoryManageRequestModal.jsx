@@ -26,8 +26,6 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [dropDownAssign, setDropDownAssign] = useState({});
   const [errors, setErrors] = useState(null);
-  const [inventory, setInventory] = useState([]);
-
   const axiosPrivate = usePrivateAxios();
 
   const user = decodedUser();
@@ -96,22 +94,8 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
     }
   }, []);
 
-  // const get_shipped_items = useCallback(async () => {
-  //   try {
-  //     const res = await axiosPrivate.post("/inventory/get-shipped-items", {
-  //       ids: [...new Set(itemData.Inv_request.map((data) => data.Item_ID))],
-  //     });
-
-  //     setInventory(res.data);
-  //   } catch (error) {
-  //     handleApiError(error);
-  //   }
-  // }, []);
-
   useEffect(() => {
     get_all_users();
-    // if (itemData.Item_status == "Shipped" || itemData.Item_status == "Received")
-    //   get_shipped_items();
     if (
       !itemData.Item_signatories &&
       itemData.Item_value.some((som) => som.Item_subcategory == "Documents")
@@ -265,20 +249,40 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
 
   const [itemState, setItemState] = useState([]);
 
-  const handleChangeDropDown = (index, itemPicked, itemName, quantity) => {
+  const handleChangeDropDown = (
+    index,
+    itemPicked,
+    itemName,
+    quantity,
+    Item_document_category
+  ) => {
     const findId = itemState.filter((fil) => fil.position == index);
 
     if (findId.length == 0)
       setItemState((prev) => [
         ...prev,
-        { position: index, item_ID: itemPicked, method: 1, itemName, quantity },
+        {
+          position: index,
+          item_ID: itemPicked,
+          method: 1,
+          itemName,
+          quantity,
+          Item_document_category,
+        },
       ]);
 
     const newArray = itemState.filter((fil) => fil.position != index);
 
     setItemState([
       ...newArray,
-      { position: index, item_ID: itemPicked, method: 1, itemName, quantity },
+      {
+        position: index,
+        item_ID: itemPicked,
+        method: 1,
+        itemName,
+        quantity,
+        Item_document_category,
+      },
     ]);
   };
 

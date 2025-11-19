@@ -14,6 +14,7 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
     Item_description: "",
     Item_quantity: 0,
     Item_status: "Pending",
+    Item_document_category: null,
   });
 
   const [dropDownData, setDropDownData] = useState([]);
@@ -99,6 +100,7 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
         Item_description: "",
         Item_quantity: 0,
         Item_status: "Pending",
+        Item_document_category: null,
       });
       setRequestArray([]);
     } catch (error) {
@@ -178,6 +180,7 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
                   Item_description: "",
                   Item_quantity: 0,
                   Item_status: "Pending",
+                  Item_document_category: null,
                 });
               }}
               className={`px-4 py-2 rounded-md font-medium transition-all cursor-pointer ${
@@ -353,6 +356,25 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
                     </>
                   ))}
                 </select>
+                <label className="block text-sm font-medium text-gray-700 mt-3 mb-1">
+                  Document Category <span className="text-red-500">*</span>
+                </label>
+                <select
+                  onChange={(e) =>
+                    setInputFields({
+                      ...inputFields,
+                      Item_document_category: e.target.value,
+                    })
+                  }
+                  required
+                  value={inputFields.Item_document_category}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter item name"
+                >
+                  <option value="">Select a category</option>
+                  <option value="INLIS">INLIS</option>
+                  <option value="Manual">Manual</option>
+                </select>
               </>
             ) : (
               <>
@@ -402,6 +424,7 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
                     Item_subcategory: inputFields.Item_subcategory.name,
                     Item_classification: inputFields.Item_classification,
                     Item_quantity: inputFields.Item_quantity,
+                    Item_document_category: inputFields.Item_document_category,
                   },
                 ]);
 
@@ -419,6 +442,7 @@ const InventoryAddRequestModal = ({ setShowAddRequest, trigger }) => {
                   Item_description: "",
                   Item_quantity: 0,
                   Item_status: "Pending",
+                  Item_document_category: null,
                 }));
               }}
               type="button"

@@ -104,7 +104,7 @@ const ShippedItems = ({ itemData }) => {
       </div>
       <div className="mt-3 px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
         <span className="text-sm font-medium text-gray-700">
-          Total Items: {itemData.Inv_request.length}
+          Total Items: {count}
         </span>
       </div>
       <React_Paginate
