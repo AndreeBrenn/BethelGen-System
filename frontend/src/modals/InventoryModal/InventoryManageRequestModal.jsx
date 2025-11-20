@@ -190,6 +190,7 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
       toast.success("Item is successfully processed", toastObjects);
       onClose();
     } catch (error) {
+      console.log(error);
       handleApiError(error);
     }
   };
@@ -554,10 +555,10 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
     e.preventDefault();
 
     try {
-      const newArray = itemData.Item_signatories.filter(
+      const newArray = itemData?.Item_signatories?.filter(
         (fil) => fil.ID != user.ID
       );
-      const previousOrder = itemData.Item_signatories.filter(
+      const previousOrder = itemData?.Item_signatories?.filter(
         (fil) => fil.ID == user.ID
       );
 

@@ -6,13 +6,14 @@ import {
   MdClear,
 } from "react-icons/md";
 import CategoryModal from "../../modals/InventoryModal/CategoryModal";
-import { handleApiError } from "../../utils/HandleError";
+import { handleApiError, toastObjects } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import InventorySubcategory from "../../components/Inventory/InventorySubcategory";
 import InventoryClassification from "../../components/Inventory/InventoryClassification";
 import DeleteConfirmationModal from "../../modals/reuseable/DeleteConfirmationModal";
 import React_Paginate from "../../utils/React_Paginate";
 import { FaSearch } from "react-icons/fa";
+import { toast } from "react-toastify";
 
 const Attributes = () => {
   const [category, setCategory] = useState([]);
@@ -93,7 +94,7 @@ const Attributes = () => {
         setShowDeleteModal(null);
       }
 
-      alert("Delete Data");
+      toast.success("Item Deleted", toastObjects);
       get_category();
     } catch (error) {
       handleApiError(error);

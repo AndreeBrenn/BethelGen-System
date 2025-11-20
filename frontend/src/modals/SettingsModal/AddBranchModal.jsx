@@ -4,7 +4,7 @@ import { handleApiError, toastObjects } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import { toast } from "react-toastify";
 
-const AddBranchModal = ({ setBranchModal }) => {
+const AddBranchModal = ({ setBranchModal, trigger }) => {
   const [branchName, setBranchName] = useState("");
 
   const axiosPrivate = usePrivateAxios();
@@ -19,6 +19,7 @@ const AddBranchModal = ({ setBranchModal }) => {
 
       setBranchName("");
       setBranchModal(false);
+      trigger();
       toast.success("Branch Added", toastObjects);
     } catch (error) {
       handleApiError(error);

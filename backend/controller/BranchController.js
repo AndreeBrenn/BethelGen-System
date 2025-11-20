@@ -46,11 +46,39 @@ const get_branch = async (req, res, next) => {
 // @route   PUT /Branch/edit-branch
 // @access  Private
 
-// const edit_branch = async (req, res, next) => {
-//     ,
-// }
+const edit_branch = async (req, res, next) => {
+  const { Branch_name, ID } = req.body;
+  try {
+    const result = await Dynamic_Branch.update(
+      { Branch_name },
+      { where: { ID } }
+    );
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Delete Branch
+// @route   Delete /Branch/delete-branch
+// @access  Private
+
+const delete_branch = async (req, res, next) => {
+  const { ID } = req.params;
+
+  try {
+    const result = await Dynamic_Branch.destroy({ where: { ID } });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
 
 module.exports = {
   create_branch,
   get_branch,
+  edit_branch,
+  delete_branch,
 };

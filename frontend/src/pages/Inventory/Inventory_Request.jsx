@@ -5,10 +5,11 @@ import DeleteConfirmationModal from "../../modals/reuseable/DeleteConfirmationMo
 import InventoryAddRequestModal from "../../modals/InventoryModal/InventoryAddRequestModal";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import { decodedUser } from "../../utils/GlobalVariables";
-import { handleApiError } from "../../utils/HandleError";
+import { handleApiError, toastObjects } from "../../utils/HandleError";
 import moment from "moment";
 import React_Paginate from "../../utils/React_Paginate";
 import ViewRequestModal from "../../modals/InventoryModal/ViewRequestModal";
+import { toast } from "react-toastify";
 
 const Item_Request = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(null);
@@ -24,24 +25,10 @@ const Item_Request = () => {
   const [searchText, setSearchText] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
 
-  const axiosPrivate = usePrivateAxios();
-  const user = decodedUser();
-
-  // Sample data - replace with actual data
-
   const [itemRequests, setItemRequest] = useState([]);
 
-  const handleView = (item) => {
-    // Add your view logic here
-    console.log("View item:", item);
-    alert(`Viewing request: ${item.request_number}`);
-  };
-
-  const handleDelete = (item) => {
-    // Add your delete logic here
-    console.log("Delete item:", item);
-    setShowDeleteModal(null);
-  };
+  const axiosPrivate = usePrivateAxios();
+  const user = decodedUser();
 
   const get_personal_request = useCallback(async () => {
     try {
@@ -250,7 +237,7 @@ const Item_Request = () => {
                 `/inventory/delete-personal-request/${showDeleteModal}`
               );
 
-              alert("Data Deleted");
+              toast.success("Item Deleted", toastObjects);
               get_personal_request();
               setShowDeleteModal(null);
             } catch (error) {

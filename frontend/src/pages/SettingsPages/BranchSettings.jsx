@@ -4,14 +4,19 @@ import { BsBuildingsFill } from "react-icons/bs";
 import { FaSearch } from "react-icons/fa";
 import AddBranchModal from "../../modals/SettingsModal/AddBranchModal";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
-import { handleApiError } from "../../utils/HandleError";
+import { handleApiError, toastObjects } from "../../utils/HandleError";
 import { useEffect } from "react";
 import React_Paginate from "../../utils/React_Paginate";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
+import EditBranchModal from "../../modals/SettingsModal/EditBranchModal";
+import DeleteConfirmationModal from "../../modals/reuseable/DeleteConfirmationModal";
+import { toast } from "react-toastify";
 
 const BranchSettings = () => {
   const [branchData, setBranchData] = useState([]);
   const [branchModal, setBranchModal] = useState(false);
+  const [branchEditModal, setBranchEditModal] = useState(null);
+  const [deleteItem, setDeleteItem] = useState(null);
 
   //SEARCH STATES
   const [searchTerm, setSearchTerm] = useState(null);
@@ -140,12 +145,14 @@ const BranchSettings = () => {
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center space-x-2">
                       <button
+                        onClick={() => setBranchEditModal(data)}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         title="Edit"
                       >
                         <MdEdit className="text-lg cursor-pointer" />
                       </button>
                       <button
+                        onClick={() => setDeleteItem(data.ID)}
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="Delete"
                       >
@@ -167,7 +174,39 @@ const BranchSettings = () => {
         currentPage={currentPage}
         setCurrentPage={setCurrentPage}
       />
-      {branchModal && <AddBranchModal setBranchModal={setBranchModal} />}
+      {branchModal && (
+        <AddBranchModal
+          setBranchModal={setBranchModal}
+          trigger={get_all_branch}
+        />
+      )}
+      {branchEditModal && (
+        <EditBranchModal
+          trigger={get_all_branch}
+          branchData={branchEditModal}
+          setBranchEditModal={setBranchEditModal}
+        />
+      )}
+
+      <DeleteConfirmationModal
+        isOpen={deleteItem}
+        onClose={() => setDeleteItem(null)}
+        onConfirm={async (e) => {
+          e.preventDefault();
+
+          try {
+            const res = await axiosPrivate.delete(
+              `/branch/delete-branch/${deleteItem}`
+            );
+
+            get_all_branch();
+            toast.success("Branch deleted", toastObjects);
+            setDeleteItem(null);
+          } catch (error) {
+            handleApiError(error);
+          }
+        }}
+      />
     </div>
   );
 };

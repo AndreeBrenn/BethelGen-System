@@ -850,25 +850,21 @@ const get_pending = async (req, res, next) => {
 
 const get_serial_automatic = async (req, res, next) => {
   const { Item_ID, limit, Item_document_category } = req.query;
-  try {
-    if (Item_document_category) {
-      const result = await Inventory_Stocks.findAll({
-        attributes: ["Item_serial"],
-        where: {
-          Item_ID: Item_ID,
-          Item_status: "Available",
-          Item_document_category,
-        },
-        limit,
-        order: [["Item_serial", "ASC"]],
-      });
 
-      return res.status(200).json(result);
+  try {
+    const whereClause = {
+      Item_ID,
+      Item_status: "Available",
+    };
+
+    if (Item_document_category) {
+      whereClause.Item_document_category = Item_document_category;
     }
+
     const result = await Inventory_Stocks.findAll({
       attributes: ["Item_serial"],
-      where: { Item_ID: Item_ID, Item_status: "Available" },
-      limit,
+      where: whereClause,
+      limit: limit,
       order: [["Item_serial", "ASC"]],
     });
 

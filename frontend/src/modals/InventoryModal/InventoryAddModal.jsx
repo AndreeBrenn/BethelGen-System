@@ -1,10 +1,15 @@
 import React, { useState } from "react";
 import { useEffect } from "react";
-import { handleApiError } from "../../utils/HandleError";
+import { handleApiError, toastObjects } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import { decodedUser } from "../../utils/GlobalVariables";
+import { useLoading } from "../../hooks/useLoading";
+import LottieAnimation from "../../utils/LottieAnimation";
+import { toast } from "react-toastify";
 
 const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
+  const { loading, startLoading, stopLoading } = useLoading();
+
   const [inputFields, setInputFields] = useState({
     Item_name: "",
     Item_category: { ID: "", name: "" },
@@ -23,8 +28,6 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
     start: 0,
     end: 0,
   });
-
-  const [loading, setLoading] = useState(false);
 
   const user = decodedUser();
   const axiosPrivate = usePrivateAxios();
@@ -56,7 +59,7 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
   const submit_data = async (e) => {
     e.preventDefault();
 
-    setLoading(true);
+    startLoading();
     try {
       if (radioButton == 1) {
         if (stocksData.quantity != stocksData.serial_num.length) {
@@ -84,41 +87,6 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
       }
 
       if (radioButton == 2) {
-        // if (
-        //   parseInt(serialRange.start) > parseInt(serialRange.end) ||
-        //   serialRange.start.trim() == "" ||
-        //   serialRange.end.trim() == ""
-        // ) {
-        //   alert("Invalid Range");
-        //   return;
-        // }
-
-        // const startNum = Number(serialRange.start);
-        // const endNum = Number(serialRange.end);
-
-        // const data = {
-        //   item_name: inputFields.Item_name,
-        //   item_category: inputFields.Item_category.name,
-        //   item_subcategory: inputFields.Item_subcategory.name,
-        //   item_classification: inputFields.Item_classification,
-        //   item_origin_branch: user.Branch,
-        //   policy_code: inputFields.policy_code,
-        //   serials: [...Array(Math.max(0, endNum - startNum + 1)).keys()].map(
-        //     (i) => {
-        //       const paddingLength = startNum.toString().length;
-
-        //       return {
-        //         Item_document_category: inputFields.Item_document_category,
-        //         Item_serial:
-        //           inputFields.policy_code +
-        //           (startNum + i).toString().padStart(paddingLength, "0"),
-        //         Item_branch: null,
-        //         Item_status: "Available",
-        //       };
-        //     }
-        //   ),
-        // };
-
         if (
           parseInt(serialRange.start) > parseInt(serialRange.end) ||
           serialRange.start.trim() == "" ||
@@ -169,11 +137,11 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
 
       trigger();
       onClose();
-      alert("Data is Submitted");
+      toast.success("Item is added", toastObjects);
     } catch (error) {
       handleApiError(error);
     } finally {
-      setLoading(false);
+      stopLoading();
     }
   };
 
@@ -518,6 +486,7 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
           <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
             <button
               type="button"
+              disabled={loading}
               onClick={onClose}
               className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
             >
@@ -526,9 +495,17 @@ const InventoryAddModal = ({ isOpen, onClose, trigger }) => {
             <button
               disabled={loading}
               type="submit"
-              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              className="flex-1 px-4 py-2 item-center justify-center flex text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
-              Add Item
+              {loading ? (
+                <LottieAnimation
+                  animationPath="/lottie/Spinner.json"
+                  loop={true}
+                  style={{ width: 60, height: 30 }}
+                />
+              ) : (
+                "Add Item"
+              )}
             </button>
           </div>
         </div>

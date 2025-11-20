@@ -2,7 +2,7 @@ import InventoryAddModal from "../../modals/InventoryModal/InventoryAddModal";
 import { useState, useRef, useCallback } from "react";
 import DeleteConfirmationModal from "../../modals/reuseable/DeleteConfirmationModal";
 import { useEffect } from "react";
-import { handleApiError } from "../../utils/HandleError";
+import { handleApiError, toastObjects } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import moment from "moment";
 import { MdMoreVert, MdRemoveRedEye, MdSearch } from "react-icons/md";
@@ -12,6 +12,7 @@ import EditPropertyModal from "../../modals/InventoryModal/EditPropertyModal";
 import ReplenishPropertyModal from "../../modals/InventoryModal/ReplenishPropertyModal";
 import React_Paginate from "../../utils/React_Paginate";
 import { FaSearch } from "react-icons/fa";
+import { toast } from "react-toastify";
 
 export default function Property() {
   const [activeTab, setActiveTab] = useState(null);
@@ -346,7 +347,7 @@ export default function Property() {
               `/inventory/delete-item/${deleteItem}`
             );
 
-            alert("Data Deleted!");
+            toast.success("Item deleted", toastObjects);
             get_items();
             setDeleteItem(null);
           } catch (error) {

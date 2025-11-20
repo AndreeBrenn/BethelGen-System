@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
-import { handleApiError } from "../../utils/HandleError";
+import { handleApiError, toastObjects } from "../../utils/HandleError";
 import uniqid from "uniqid";
+import { toast } from "react-toastify";
 
 const CategoryModal = ({ showModal, setShowModal, trigger }) => {
   const [inputFields, setInputFields] = useState(
@@ -33,7 +34,7 @@ const CategoryModal = ({ showModal, setShowModal, trigger }) => {
         data: [],
         type: "",
       });
-      alert("Category Created");
+      toast.success("Category Added", toastObjects);
     } catch (error) {
       handleApiError(error);
     } finally {
@@ -57,7 +58,7 @@ const CategoryModal = ({ showModal, setShowModal, trigger }) => {
         data: [],
         type: "",
       });
-      alert("Sub Category Added!");
+      toast.success("Subcategory Added", toastObjects);
     } catch (error) {
       handleApiError(error);
     } finally {
@@ -77,7 +78,7 @@ const CategoryModal = ({ showModal, setShowModal, trigger }) => {
         sub_categoryID: showModal.subcategoryID,
       });
       trigger();
-      alert("Classification Added!");
+      toast.success("Classification Added", toastObjects);
       setShowModal({
         purpose: "",
         show: false,

@@ -1,6 +1,9 @@
 import { useState } from "react";
-import { handleApiError } from "../../utils/HandleError";
+import { handleApiError, toastObjects } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
+import { toast } from "react-toastify";
+import { useLoading } from "../../hooks/useLoading";
+import LottieAnimation from "../../utils/LottieAnimation";
 
 const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
   const [radioButton, setRadioButton] = useState(1);
@@ -13,15 +16,17 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
     end: 0,
   });
   const [generatedBy, setGeneratedBy] = useState(null);
+  const { loading, startLoading, stopLoading } = useLoading();
   const axiosPrivate = usePrivateAxios();
 
   const replenish_data = async (e) => {
     e.preventDefault();
 
+    startLoading();
     try {
       if (radioButton == 1) {
         if (stocksData.quantity != stocksData.serial_num.length) {
-          alert("Invalid Input");
+          toast.error("Quantity is not equal to your input", toastObjects);
           return;
         }
 
@@ -50,7 +55,7 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
           serialRange.start.toString().trim() == "" ||
           serialRange.end.toString().trim() == ""
         ) {
-          alert("Invalid Range");
+          toast.error("Invalid range", toastObjects);
           return;
         }
 
@@ -87,11 +92,13 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
         });
       }
 
-      alert("Data submitted");
+      toast.success("Item is added", toastObjects);
       setReplenish(null);
       trigger();
     } catch (error) {
       handleApiError(error);
+    } finally {
+      stopLoading();
     }
   };
 
@@ -282,6 +289,7 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
           )}
           <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
             <button
+              disabled={loading}
               type="button"
               onClick={() => setReplenish(null)}
               className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
@@ -289,10 +297,19 @@ const ReplenishPropertyModal = ({ data, setReplenish, trigger }) => {
               Cancel
             </button>
             <button
+              disabled={loading}
               type="submit"
-              className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              className="flex-1 flex item-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
-              Submit
+              {loading ? (
+                <LottieAnimation
+                  animationPath="/lottie/Spinner.json"
+                  loop={true}
+                  style={{ height: 20, width: 40 }}
+                />
+              ) : (
+                "Submit"
+              )}
             </button>
           </div>
         </div>
