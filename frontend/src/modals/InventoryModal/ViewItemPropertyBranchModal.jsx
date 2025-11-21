@@ -5,10 +5,13 @@ import React_Paginate from "../../utils/React_Paginate";
 import { MdSearch } from "react-icons/md";
 import { FaSearch } from "react-icons/fa";
 import { decodedUser } from "../../utils/GlobalVariables";
+import { getBranchName, useBranches } from "../../zustand/Branches";
 
 const ViewItemPropertyBranchModal = ({ ID_data, setView }) => {
   const [serialData, setSerialData] = useState([]);
   const axiosPrivate = usePrivateAxios();
+
+  const branches = useBranches();
 
   const [searchText, setSearchText] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
@@ -137,7 +140,7 @@ const ViewItemPropertyBranchModal = ({ ID_data, setView }) => {
                     </div>
 
                     <div className="flex-1 text-right text-sm text-gray-600">
-                      {stock.Item_branch || "N/A"}
+                      {getBranchName(branches, stock.Item_branch) || "N/A"}
                     </div>
                   </div>
                 ))}

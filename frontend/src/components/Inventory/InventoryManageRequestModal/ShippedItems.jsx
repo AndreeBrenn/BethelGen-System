@@ -3,6 +3,7 @@ import { FaTruck } from "react-icons/fa";
 import React_Paginate from "../../../utils/React_Paginate";
 import { handleApiError } from "../../../utils/HandleError";
 import usePrivateAxios from "../../../hooks/useProtectedAxios";
+import { useBranches } from "../../../zustand/Branches";
 
 const ShippedItems = ({ itemData }) => {
   const [shippedItem, setShippedItem] = useState([]);
@@ -11,6 +12,7 @@ const ShippedItems = ({ itemData }) => {
   const [itemsPerPage, setItemPerPage] = useState(5);
   const [itemOffset, setItemOffset] = useState(0);
   const [count, setCount] = useState(0);
+  const branches = useBranches();
 
   const axiosPrivate = usePrivateAxios();
 
@@ -94,7 +96,10 @@ const ShippedItems = ({ itemData }) => {
                 </td>
                 <td className="px-4 py-3 text-sm">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {data.Item_branch}
+                    {
+                      branches.filter((fil) => fil.ID == data.Item_branch)[0]
+                        ?.Branch_name
+                    }
                   </span>
                 </td>
               </tr>

@@ -26,6 +26,7 @@ import {
   radioGroup,
   checkbox,
 } from "@pdfme/schemas";
+import { getBranchName, useBranches } from "../../zustand/Branches";
 
 const Procurement = () => {
   const [activeTab, setActiveTab] = useState("all"); // 'all' or 'pending'
@@ -35,6 +36,7 @@ const Procurement = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(null);
 
   const [inventoryRequests, setInventoryRequest] = useState([]);
+  const branches = useBranches();
 
   const [currentPage, setCurrentPage] = useState(0);
   const [itemsPerPage, setItemPerPage] = useState(5);
@@ -329,6 +331,9 @@ const Procurement = () => {
                       Department
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Branch
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Request Date
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -362,6 +367,9 @@ const Procurement = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {item.Item_userID.Department}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {getBranchName(branches, item.Item_branch)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatDate(item.createdAt)}

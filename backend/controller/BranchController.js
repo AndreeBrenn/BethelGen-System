@@ -42,6 +42,20 @@ const get_branch = async (req, res, next) => {
   }
 };
 
+// @desc    Get All Branch
+// @route   GET /Branch/get-all-branch
+// @access  Private
+
+const get_all_branch = async (req, res, next) => {
+  try {
+    const result = await Dynamic_Branch.findAll();
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Edit Branch
 // @route   PUT /Branch/edit-branch
 // @access  Private
@@ -79,6 +93,7 @@ const delete_branch = async (req, res, next) => {
 module.exports = {
   create_branch,
   get_branch,
+  get_all_branch,
   edit_branch,
   delete_branch,
 };

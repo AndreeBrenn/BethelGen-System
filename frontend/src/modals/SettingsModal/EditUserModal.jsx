@@ -1,10 +1,17 @@
 import React, { useState } from "react";
 import { MdClose, MdEdit } from "react-icons/md";
-import { permissionGroups } from "../../utils/GlobalVariables";
+import { get_branch, permissionGroups } from "../../utils/GlobalVariables";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
-import { handleApiError } from "../../utils/HandleError";
+import { handleApiError, toastObjects } from "../../utils/HandleError";
+import { toast } from "react-toastify";
 
-const EditUserModal = ({ setShowEditModal, showEditModal, setUsers }) => {
+const EditUserModal = ({
+  setShowEditModal,
+  showEditModal,
+  setUsers,
+  trigger,
+}) => {
+  const branches = get_branch();
   const [inputFields, setInputFields] = useState({ ...showEditModal });
   const [loading, setLoading] = useState(false);
   const axiosPrivate = usePrivateAxios();
@@ -20,10 +27,11 @@ const EditUserModal = ({ setShowEditModal, showEditModal, setUsers }) => {
         prevData.map((item) => (item.ID === res.data.ID ? res.data : item))
       );
 
-      alert("User Updated Successfully");
+      toast.success("User updated successfully", toastObjects);
+      trigger();
+      setShowEditModal(null);
     } catch (error) {
-      console.log(error);
-      //handleApiError(error);
+      handleApiError(error);
     } finally {
       setLoading(false);
     }
@@ -212,7 +220,7 @@ const EditUserModal = ({ setShowEditModal, showEditModal, setUsers }) => {
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Branch <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <select
                     onChange={(e) =>
                       setInputFields({
                         ...inputFields,
@@ -222,7 +230,27 @@ const EditUserModal = ({ setShowEditModal, showEditModal, setUsers }) => {
                     value={inputFields.Branch}
                     required
                     className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                  >
+                    <option hidden selected value="">
+                      Select Branch
+                    </option>
+                    {branches.map((data) => (
+                      <>
+                        <option value={data.ID}>{data.Branch_name}</option>
+                      </>
+                    ))}
+                  </select>
+                  {/* <input
+                    onChange={(e) =>
+                      setInputFields({
+                        ...inputFields,
+                        Branch: e.target.value,
+                      })
+                    }
+                    value={inputFields.Branch}
+                    required
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  /> */}
                 </div>
               </div>
             </div>

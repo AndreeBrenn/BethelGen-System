@@ -254,6 +254,7 @@ const AdminSettings = () => {
           setShowEditModal={setShowEditModal}
           showEditModal={showEditModal}
           setUsers={setUsers}
+          trigger={getAllUsers}
         />
       )}
     </div>

@@ -190,7 +190,6 @@ const InventoryManageRequestModal = ({ requestData, onClose, trigger }) => {
       toast.success("Item is successfully processed", toastObjects);
       onClose();
     } catch (error) {
-      console.log(error);
       handleApiError(error);
     }
   };

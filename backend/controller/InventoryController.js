@@ -343,19 +343,30 @@ const get_items = async (req, res, next) => {
 // @access  Private
 
 const get_stocks = async (req, res, next) => {
-  const { Item_ID, search, offset, limit } = req.query;
+  const { Item_ID, search, offset, limit, branch, status } = req.query;
 
   try {
+    const whereClause = {
+      Item_ID,
+    };
+
+    // Add search condition (searches in Item_serial only)
+    if (search) {
+      whereClause.Item_serial = { [Op.iLike]: `%${search}%` };
+    }
+
+    // Add branch filter if provided
+    if (branch) {
+      whereClause.Item_branch = branch;
+    }
+
+    // Add status filter if provided
+    if (status) {
+      whereClause.Item_status = status;
+    }
+
     const result = await Inventory_Stocks.findAndCountAll({
-      where: {
-        Item_ID,
-        ...(search && {
-          [Op.or]: [
-            { Item_serial: { [Op.iLike]: `%${search}%` } },
-            { Item_branch: { [Op.iLike]: `%${search}%` } },
-          ],
-        }),
-      },
+      where: whereClause,
       offset,
       limit,
       order: [["Item_serial", "ASC"]],

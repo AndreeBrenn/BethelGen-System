@@ -3,8 +3,10 @@ import { MdAdd, MdClose } from "react-icons/md";
 import { handleApiError } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import { permissionGroups } from "../../utils/GlobalVariables";
+import { useBranches } from "../../zustand/Branches";
 
 const CreateUserModal = ({ setShowCreateModal, setUsers }) => {
+  const branches = useBranches();
   const [inputFields, setInputFields] = useState({
     FirstName: "",
     LastName: "",
@@ -255,35 +257,34 @@ const CreateUserModal = ({ setShowCreateModal, setUsers }) => {
                   <label className="block text-sm font-medium text-slate-700 mb-2">
                     Branch <span className="text-red-500">*</span>
                   </label>
-                  {/* <select
+                  <select
                     onChange={(e) =>
                       setInputFields({
                         ...inputFields,
-                        Department: e.target.value,
+                        Branch: e.target.value,
                       })
                     }
-                    value={inputFields.Department}
+                    value={inputFields.Branch}
                     required
                     className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option hidden selected value="">
-                      Select Department
+                      Select Branch
                     </option>
-                    <option value="it">IT Department</option>
-                    <option value="hr">Human Resources</option>
-                    <option value="underwriting">Underwriting</option>
-                    <option value="claims">Claims Department</option>
-                    <option value="sales">Sales & Marketing</option>
-                    <option value="finance">Finance</option>
-                  </select> */}
-                  <input
+                    {branches.map((data) => (
+                      <>
+                        <option value={data.ID}>{data.Branch_name}</option>
+                      </>
+                    ))}
+                  </select>
+                  {/* <input
                     className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     onChange={(e) =>
                       setInputFields({ ...inputFields, Branch: e.target.value })
                     }
                     value={inputFields.Branch}
                     required
-                  />
+                  /> */}
                 </div>
               </div>
             </div>

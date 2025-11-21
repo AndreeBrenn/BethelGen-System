@@ -13,6 +13,7 @@ import ReplenishPropertyModal from "../../modals/InventoryModal/ReplenishPropert
 import React_Paginate from "../../utils/React_Paginate";
 import { FaSearch } from "react-icons/fa";
 import { toast } from "react-toastify";
+import { getBranchName, useBranches } from "../../zustand/Branches";
 
 export default function Property() {
   const [activeTab, setActiveTab] = useState(null);
@@ -37,6 +38,8 @@ export default function Property() {
 
   const [searchText, setSearchText] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
+
+  const branches = useBranches();
 
   const get_items = useCallback(async () => {
     try {
@@ -235,7 +238,7 @@ export default function Property() {
                         {item.available_count}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {item.Item_origin_branch}
+                        {getBranchName(branches, item.Item_origin_branch)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {moment(item.createdAt).format("MM/DD/YYYY - hh:mm A ")}

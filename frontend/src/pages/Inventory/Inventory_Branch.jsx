@@ -13,9 +13,11 @@ import React_Paginate from "../../utils/React_Paginate";
 import { FaSearch } from "react-icons/fa";
 import { decodedUser } from "../../utils/GlobalVariables";
 import ViewItemPropertyBranchModal from "../../modals/InventoryModal/ViewItemPropertyBranchModal";
+import { getBranchName, useBranches } from "../../zustand/Branches";
 
 export default function Inventory_Branch() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const branches = useBranches();
 
   const axiosPrivate = usePrivateAxios();
   const user = decodedUser();
@@ -211,7 +213,7 @@ export default function Inventory_Branch() {
                         {item.stock_count}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {item.Item_origin_branch}
+                        {getBranchName(branches, item.Item_origin_branch)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                         {moment(item.createdAt).format("MM/DD/YYYY - hh:mm A ")}

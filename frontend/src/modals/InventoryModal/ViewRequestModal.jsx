@@ -14,14 +14,18 @@ import {
 } from "react-icons/fa";
 import { MdPending } from "react-icons/md";
 import { decodedUser } from "../../utils/GlobalVariables";
-import { handleApiError } from "../../utils/HandleError";
+import { handleApiError, toastObjects } from "../../utils/HandleError";
 import usePrivateAxios from "../../hooks/useProtectedAxios";
 import moment from "moment";
+import { getBranchName, useBranches } from "../../zustand/Branches";
+import { toast } from "react-toastify";
 
 const ViewRequestModal = ({ setViewRequestModal, requestData, trigger }) => {
   // Sample data structure - replace with your actual data
 
   const data = requestData || sampleData;
+
+  const branches = useBranches();
 
   const axiosPrivate = usePrivateAxios();
   const user = decodedUser();
@@ -112,7 +116,7 @@ const ViewRequestModal = ({ setViewRequestModal, requestData, trigger }) => {
       });
 
       trigger();
-      alert("Item Received");
+      toast.success("Item Received", toastObjects);
 
       setViewRequestModal(null);
     } catch (error) {
@@ -181,9 +185,12 @@ const ViewRequestModal = ({ setViewRequestModal, requestData, trigger }) => {
                 <p className="text-sm text-gray-500 mb-1">Description</p>
                 <p className="text-gray-700">{data.Item_description}</p>
               </div>
-              <div className="md:col-span-2 flex items-center gap-2 text-gray-700">
-                <FaMapMarkerAlt className="text-blue-600" />
-                <span>{data.Item_branch}</span>
+              <div className="md:col-span-2 flex flex-col gap-2 text-gray-700">
+                <p className="text-sm text-gray-500 ">Branch</p>
+                <div className="flex items-center">
+                  <FaMapMarkerAlt className="text-blue-600" />
+                  <span>{getBranchName(branches, data.Item_branch)}</span>
+                </div>
               </div>
             </div>
           </div>

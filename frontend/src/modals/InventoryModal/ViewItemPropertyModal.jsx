@@ -4,6 +4,7 @@ import usePrivateAxios from "../../hooks/useProtectedAxios";
 import React_Paginate from "../../utils/React_Paginate";
 import { MdSearch } from "react-icons/md";
 import { FaSearch } from "react-icons/fa";
+import { getBranchName, useBranches } from "../../zustand/Branches";
 
 const ViewItemPropertyModal = ({ ID_data, setView }) => {
   const [serialData, setSerialData] = useState([]);
@@ -12,11 +13,17 @@ const ViewItemPropertyModal = ({ ID_data, setView }) => {
   const [searchText, setSearchText] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
 
+  const [dropdownFilter, setDropDownFilter] = useState({
+    branch: "",
+    status: "",
+  });
+
   const [currentPage, setCurrentPage] = useState(0);
   const [itemsPerPage, setItemPerPage] = useState(5);
   const [itemOffset, setItemOffset] = useState(0);
   const [count, setCount] = useState(0);
 
+  const branches = useBranches();
   const handleSearch = (e) => {
     e.preventDefault();
     setAppliedSearch(searchText);
@@ -32,6 +39,8 @@ const ViewItemPropertyModal = ({ ID_data, setView }) => {
           search: appliedSearch,
           offset: itemOffset,
           limit: itemsPerPage,
+          branch: dropdownFilter.branch,
+          status: dropdownFilter.status,
         },
       });
 
@@ -40,7 +49,7 @@ const ViewItemPropertyModal = ({ ID_data, setView }) => {
     } catch (error) {
       handleApiError(error);
     }
-  }, [itemsPerPage, itemOffset, appliedSearch]);
+  }, [itemsPerPage, itemOffset, appliedSearch, dropdownFilter]);
 
   useEffect(() => {
     get_stocks();
@@ -67,8 +76,9 @@ const ViewItemPropertyModal = ({ ID_data, setView }) => {
           </button>
         </div>
 
-        <div className="bg-white rounded-lg p-4 mb-4 ">
-          <form onSubmit={handleSearch} className="relative flex">
+        <div className="bg-white rounded-lg p-4 mb-4">
+          {/* Search Bar */}
+          <form onSubmit={handleSearch} className="relative flex mb-4">
             <MdSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xl" />
             <input
               type="text"
@@ -91,6 +101,10 @@ const ViewItemPropertyModal = ({ ID_data, setView }) => {
                 setSearchText("");
                 setAppliedSearch("");
                 get_stocks();
+                setDropDownFilter({
+                  status: "",
+                  branch: "",
+                });
               }}
               type="button"
               className="bg-red-600 text-white px-3 rounded-lg ml-3 cursor-pointer"
@@ -98,6 +112,54 @@ const ViewItemPropertyModal = ({ ID_data, setView }) => {
               Clear
             </button>
           </form>
+
+          {/* Filter Dropdowns */}
+          <div className="flex gap-4">
+            {/* Status Filter */}
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">
+                Filter by Status
+              </label>
+              <select
+                onChange={(e) =>
+                  setDropDownFilter({
+                    ...dropdownFilter,
+                    status: e.target.value,
+                  })
+                }
+                value={dropdownFilter.status}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All Status</option>
+                <option value="Available">Available</option>
+                <option value="Unavailable">Unavailable</option>
+              </select>
+            </div>
+
+            {/* Branch Filter */}
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-gray-600 uppercase mb-2">
+                Filter by Branch
+              </label>
+              <select
+                onChange={(e) =>
+                  setDropDownFilter({
+                    ...dropdownFilter,
+                    branch: e.target.value,
+                  })
+                }
+                value={dropdownFilter.branch}
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All Branches</option>
+                {branches.map((branch) => (
+                  <option key={branch.ID} value={branch.ID}>
+                    {branch.Branch_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* Content */}
@@ -154,7 +216,7 @@ const ViewItemPropertyModal = ({ ID_data, setView }) => {
                       </span>
                     </div>
                     <div className="flex-1 text-center text-sm text-gray-600">
-                      {stock.Item_branch || "N/A"}
+                      {getBranchName(branches, stock.Item_branch) || "N/A"}
                     </div>
                     {ID_data.Item_subcategory == "Documents" && (
                       <div className="flex-1 text-center text-sm text-gray-600">

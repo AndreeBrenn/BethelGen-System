@@ -186,13 +186,13 @@ const Item_Request = () => {
                           >
                             <FaEye className="text-lg" />
                           </button>
-                          <button
+                          {/* <button
                             onClick={() => setShowDeleteModal(item.ID)}
                             className="text-red-600 hover:text-red-700 p-2 rounded hover:bg-red-50 transition-colors"
                             title="Delete"
                           >
                             <FaTrash className="text-lg" />
-                          </button>
+                          </button> */}
                         </div>
                       </td>
                     </tr>
